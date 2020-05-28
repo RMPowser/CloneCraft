@@ -120,9 +120,15 @@ struct Vertex {
 
 // using exactly the same position and color values as before (within the vertex shader), but now they're combined into one array of vertices. This is known as interleaving vertex attributes.
 const std::vector<Vertex> vertices = {
-	{{ 0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}}, // position, color
-	{{ 0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}}, // position, color
-	{{-0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}}  // position, color
+	{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+	{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+	{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+	{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+};
+
+// array indices to represent the contents of the index buffer. each index corresponds to a vertex within vertices array. uint16_t because theres less that 65535 unique vertices
+const std::vector<uint16_t> indices = {
+	0, 1, 2, 2, 3, 0
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -241,6 +247,8 @@ private:
 
 	VkBuffer vertexBuffer;
 	VkDeviceMemory vertexBufferMemory;
+	VkBuffer indexBuffer;
+	VkDeviceMemory indexBufferMemory;
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// create a window using glfw because vulkan cant create windows
@@ -279,6 +287,7 @@ private:
 		createFrameBuffers();
 		createCommandPool();
 		createVertexBuffer();
+		createIndexBuffer();
 		createCommandBuffers();
 		createSyncObjects();
 	}
@@ -300,6 +309,9 @@ private:
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	void cleanup() { 
 		cleanupSwapChain();
+
+		vkDestroyBuffer(device, indexBuffer, nullptr);
+		vkFreeMemory(device, indexBufferMemory, nullptr);
 
 		vkDestroyBuffer(device, vertexBuffer, nullptr);
 		vkFreeMemory(device, vertexBufferMemory, nullptr);
@@ -1440,6 +1452,33 @@ private:
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// almost identical to createVertexBuffer(). only two notable differences. bufferSize is now equal to the number of indices times
+	// the size of the index type, either uint16_t or uint32_t. The usage of the indexBuffer should be 
+	// VK_BUFFER_USAGE_INDEX_BUFFER_BIT instead of VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, which makes sense. Other than that, the process
+	// is exactly the same. We create a staging buffer to copy the contents of the indices array to and then copy it to the final 
+	// device local index buffer.
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	void createIndexBuffer() {
+		VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+
+		VkBuffer stagingBuffer;
+		VkDeviceMemory stagingBufferMemory;
+		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+		void* data;
+		vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+		memcpy(data, indices.data(), (size_t)bufferSize);
+		vkUnmapMemory(device, stagingBufferMemory);
+
+		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
+
+		copyBuffer(stagingBuffer, indexBuffer, bufferSize);
+
+		vkDestroyBuffer(device, stagingBuffer, nullptr);
+		vkFreeMemory(device, stagingBufferMemory, nullptr);
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// parameters for the buffer size, usage, and memory properties that we can use to create many different types of buffers. The 
 	// last two parameters are output variables to write the handles to.
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1655,6 +1694,14 @@ private:
 			VkDeviceSize offsets[] = { 0 };
 			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
 
+
+			// An index buffer is bound with vkCmdBindIndexBuffer which has the index buffer, a byte offset into it, and the type of index 
+			// data as parameters. the possible types are VK_INDEX_TYPE_UINT16 and VK_INDEX_TYPE_UINT32.
+			vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+
+
+			// the following block is deprecated but left in for notes.
+			/*
 			// We've now told Vulkan which operations to execute in the graphics pipeline and which attachment to use in the 
 			// fragment shader, so all that remains is telling it to draw the triangle.
 			// The actual vkCmdDraw is so simple because of all the information we specified in advance. It has the following 
@@ -1665,6 +1712,15 @@ private:
 			//		firstVertex : Used as an offset into the vertex buffer, defines the lowest value of gl_VertexIndex.
 			//		firstInstance : Used as an offset for instanced rendering, defines the lowest value of gl_InstanceIndex.
 			vkCmdDraw(commandBuffers[i], static_cast<uint32_t>(vertices.size()), 1, 0, 0);
+			*/
+
+
+			// A call to this function is very similar to vkCmdDraw. The first two parameters specify the number of indices and the number of
+			// instances. We're not using instancing, so just specify 1 instance. The number of indices represents the number of vertices 
+			// that will be passed to the vertex buffer. The next parameter specifies an offset into the index buffer, using a value of 1
+			// would cause the graphics card to start reading at the second index. The second to last parameter specifies an offset to add 
+			// to the indices in the index buffer. The final parameter specifies an offset for instancing, which we're not using.
+			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 
 			// The render pass can now be ended.
 			vkCmdEndRenderPass(commandBuffers[i]);
@@ -1675,6 +1731,7 @@ private:
 			}
 		}
 	}
+
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Draw the god damned frame
 	// function will perform the following operations:
@@ -1937,6 +1994,7 @@ private:
 		return VK_FALSE;
 	}
 };
+
 
 int main() {
 	CloneCraftApplication app;
