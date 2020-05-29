@@ -5,6 +5,7 @@
 // view transformations such as glm::lookAt, and projection transformations such as glm::perspective. The GLM_FORCE_RADIANS 
 // definition is necessary to make sure that functions like glm::rotate use radians as arguments, to avoid any possible confusion.
 #define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES // force GLM to use a version of its types that has the alignment requirements already specified for us
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -273,6 +274,9 @@ private:
 	std::vector<VkBuffer> uniformBuffers;
 	std::vector<VkDeviceMemory> uniformBuffersMemory;
 
+	VkDescriptorPool descriptorPool;
+	std::vector<VkDescriptorSet> descriptorSets;
+
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// create a window using glfw because vulkan cant create windows
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -313,6 +317,8 @@ private:
 		createVertexBuffer();
 		createIndexBuffer();
 		createUniformBuffers();
+		createDescriptorPool();
+		createDescriptorSets();
 		createCommandBuffers();
 		createSyncObjects();
 	}
@@ -1201,7 +1207,7 @@ private:
 		// back faces or both. The frontFace variable specifies the vertex order for faces to be considered front-facing and can be
 		// clockwise or counterclockwise.
 		rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-		rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+		rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 
 		// The rasterizer can alter the depth values by adding a constant value or biasing them based on a fragment's slope. This is
 		// sometimes used for shadow mapping, but we won't be using it.
@@ -1571,7 +1577,7 @@ private:
 		// glm::mat4(1.0f) constructor returns an identity matrix. Using a rotation angle of time * glm::radians(90.0f) accomplishes
 		// the rotation of 90 degrees per second.
 		UniformBufferObject ubo{};
-		ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 
 		// For the view transformation I've decided to look at the geometry from above at a 45 degree angle. The glm::lookAt function
 		// takes the eye position, center position and up axis as parameters.
@@ -1639,6 +1645,100 @@ private:
 		vkBindBufferMemory(device, buffer, bufferMemory, 0);
 	}
 
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// Descriptor sets can't be created directly, they must be allocated from a pool like command buffers. The equivalent for 
+	// descriptor sets is unsurprisingly called a descriptor pool
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	void createDescriptorPool() {
+		// We first need to describe which descriptor types our descriptor sets are going to contain and how many of them, 
+		// using VkDescriptorPoolSize structures.
+		VkDescriptorPoolSize poolSize{};
+		poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		poolSize.descriptorCount = static_cast<uint32_t>(swapChainImages.size());
+
+		// We will allocate one of these descriptors for every frame. This pool size structure is referenced by the main VkDescriptorPoolCreateInfo
+		VkDescriptorPoolCreateInfo poolInfo{};
+		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		poolInfo.poolSizeCount = 1;
+		poolInfo.pPoolSizes = &poolSize;
+
+		// Aside from the maximum number of individual descriptors that are available, we also need to specify the maximum number 
+		// of descriptor sets that may be allocated
+		poolInfo.maxSets = static_cast<uint32_t>(swapChainImages.size());;
+
+		// The structure has an optional flag similar to command pools that determines if individual descriptor sets can be freed or
+		// not: VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT. We're not going to touch the descriptor set after creating it, 
+		// so we don't need this flag. You can leave flags to its default value of 0.
+
+
+		// The descriptor pool should be destroyed when the swap chain is recreated because it depends on the number of images. see cleanupSwapChain()
+		if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create descriptor pool!");
+		}
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// A descriptor set allocation is described with a VkDescriptorSetAllocateInfo struct. You need to specify the descriptor pool 
+	// to allocate from, the number of descriptor sets to allocate, and the descriptor layout to base them on
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	void createDescriptorSets() {
+		// In our case we will create one descriptor set for each swap chain image, all with the same layout. Unfortunately we do 
+		// need all the copies of the layout because the next function expects an array matching the number of sets.
+		std::vector<VkDescriptorSetLayout> layouts(swapChainImages.size(), descriptorSetLayout);
+		VkDescriptorSetAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		allocInfo.descriptorPool = descriptorPool;
+		allocInfo.descriptorSetCount = swapChainImages.size();
+		allocInfo.pSetLayouts = layouts.data();
+
+		descriptorSets.resize(swapChainImages.size());
+		if (vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data()) != VK_SUCCESS) { // You don't need to explicitly clean up descriptor sets, because they will be automatically freed when the descriptor pool is destroyed. The call to vkAllocateDescriptorSets will allocate descriptor sets, each with one uniform buffer descriptor.
+			throw std::runtime_error("failed to allocate descriptor sets!");
+		}
+
+		// The descriptor sets have been allocated now, but the descriptors within still need to be configured. We'll now add a loop to populate every descriptor
+		// Descriptors that refer to buffers, like our uniform buffer descriptor, are configured with a VkDescriptorBufferInfo struct. 
+		// This structure specifies the buffer and the region within it that contains the data for the descriptor.
+		for (size_t i = 0; i < swapChainImages.size(); i++) {
+			VkDescriptorBufferInfo bufferInfo{};
+			bufferInfo.buffer = uniformBuffers[i];
+			bufferInfo.offset = 0;
+			bufferInfo.range = sizeof(UniformBufferObject);
+
+			// If you're overwriting the whole buffer, like we are in this case, then it is is also possible to use the VK_WHOLE_SIZE 
+			// value for the range. The configuration of descriptors is updated using the vkUpdateDescriptorSets function, which takes an
+			// array of VkWriteDescriptorSet structs as parameter.
+			//
+			// The first two fields specify the descriptor set to update and the binding. We gave our uniform buffer binding index 0. 
+			// Remember that descriptors can be arrays, so we also need to specify the first index in the array that we want to 
+			// update. We're not using an array, so the index is simply 0.
+			VkWriteDescriptorSet descriptorWrite{};
+			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrite.dstSet = descriptorSets[i];
+			descriptorWrite.dstBinding = 0;
+			descriptorWrite.dstArrayElement = 0;
+
+			// We need to specify the type of descriptor again. It's possible to update multiple descriptors at once in an array, 
+			// starting at index dstArrayElement. The descriptorCount field specifies how many array elements you want to update.
+			descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			descriptorWrite.descriptorCount = 1;
+
+			// The last field references an array with descriptorCount structs that actually configure the descriptors. It depends 
+			// on the type of descriptor which one of the three you actually need to use. The pBufferInfo field is used for 
+			// descriptors that refer to buffer data, pImageInfo is used for descriptors that refer to image data, and 
+			// pTexelBufferView is used for descriptors that refer to buffer views. Our descriptor is based on buffers, so we're 
+			// using pBufferInfo.
+			descriptorWrite.pBufferInfo = &bufferInfo;
+			descriptorWrite.pImageInfo = nullptr; // Optional
+			descriptorWrite.pTexelBufferView = nullptr; // Optional
+
+			// The updates are applied using vkUpdateDescriptorSets. It accepts two kinds of arrays as parameters: an array of 
+			// VkWriteDescriptorSet and an array of VkCopyDescriptorSet. The latter can be used to copy descriptors to each other, 
+			// as its name implies.
+			vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
+		}
+	}
+	
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// copy the contents of one buffer to another buffer
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1831,6 +1931,14 @@ private:
 			vkCmdDraw(commandBuffers[i], static_cast<uint32_t>(vertices.size()), 1, 0, 0);
 			*/
 
+			// bind the right descriptor set for each swap chain image to the descriptors in the shader with cmdBindDescriptorSets. 
+			// This needs to be done before the vkCmdDrawIndexed call
+			//
+			// Unlike vertex and index buffers, descriptor sets are not unique to graphics pipelines. Therefore we need to specify if we want
+			// to bind descriptor sets to the graphics or compute pipeline. The next parameter is the layout that the descriptors are based on.
+			// The next three parameters specify the index of the first descriptor set, the number of sets to bind, and the array of sets to 
+			// bind. We'll get back to this in a moment. The last two parameters specify an array of offsets that are used for dynamic descriptors.
+			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i], 0, nullptr);
 
 			// A call to this function is very similar to vkCmdDraw. The first two parameters specify the number of indices and the number of
 			// instances. We're not using instancing, so just specify 1 instance. The number of indices represents the number of vertices 
@@ -2036,6 +2144,9 @@ private:
 			vkDestroyBuffer(device, uniformBuffers[i], nullptr);
 			vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
 		}
+
+		// The descriptor pool should be destroyed when the swap chain is recreated because it depends on the number of images. recreate it in recreateSwapChain().
+		vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2063,6 +2174,8 @@ private:
 		createGraphicsPipeline();
 		createFrameBuffers();
 		createUniformBuffers();
+		createDescriptorPool();
+		createDescriptorSets();
 		createCommandBuffers();
 	}
 
