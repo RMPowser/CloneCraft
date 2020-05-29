@@ -1,6 +1,17 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+// The glm/gtc/matrix_transform.hpp header exposes functions that can be used to generate model transformations such as glm::rotate,
+// view transformations such as glm::lookAt, and projection transformations such as glm::perspective. The GLM_FORCE_RADIANS 
+// definition is necessary to make sure that functions like glm::rotate use radians as arguments, to avoid any possible confusion.
+#define GLM_FORCE_RADIANS
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
+// The chrono standard library header exposes functions to do precise timekeeping. We'll use this to make sure that the geometry
+// rotates 90 degrees per second regardless of frame rate.
+#include <chrono>
+
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
@@ -42,6 +53,13 @@ struct SwapChainSupportDetails {
 	VkSurfaceCapabilitiesKHR capabilities;
 	std::vector<VkSurfaceFormatKHR> formats;
 	std::vector<VkPresentModeKHR> presentModes;
+};
+
+// The data in the matrices is binary compatible with the way the shader expects it, so later we can just memcpy a UniformBufferObject to a VkBuffer.
+struct UniformBufferObject {
+	glm::mat4 model;
+	glm::mat4 view;
+	glm::mat4 proj;
 };
 
 struct Vertex {
@@ -227,8 +245,10 @@ private:
 	std::vector<VkImageView> swapChainImageViews;
 
 	VkRenderPass renderPass;
-	VkPipelineLayout pipelineLayout;
 
+	VkDescriptorSetLayout descriptorSetLayout;
+
+	VkPipelineLayout pipelineLayout;
 	VkPipeline graphicsPipeline;
 
 	std::vector<VkFramebuffer> swapChainFramebuffers;
@@ -249,6 +269,9 @@ private:
 	VkDeviceMemory vertexBufferMemory;
 	VkBuffer indexBuffer;
 	VkDeviceMemory indexBufferMemory;
+
+	std::vector<VkBuffer> uniformBuffers;
+	std::vector<VkDeviceMemory> uniformBuffersMemory;
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// create a window using glfw because vulkan cant create windows
@@ -283,11 +306,13 @@ private:
 		createSwapChain();
 		createImageViews();
 		createRenderPass();
+		createDescriptorSetLayout();
 		createGraphicsPipeline();
 		createFrameBuffers();
 		createCommandPool();
 		createVertexBuffer();
 		createIndexBuffer();
+		createUniformBuffers();
 		createCommandBuffers();
 		createSyncObjects();
 	}
@@ -309,6 +334,8 @@ private:
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	void cleanup() { 
 		cleanupSwapChain();
+
+		vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 
 		vkDestroyBuffer(device, indexBuffer, nullptr);
 		vkFreeMemory(device, indexBufferMemory, nullptr);
@@ -1005,6 +1032,38 @@ private:
 		}
 	}
 
+	void createDescriptorSetLayout() {
+		// Every binding needs to be described through a VkDescriptorSetLayoutBinding struct ofc.
+		// The first two fields specify the binding used in the shader and the type of descriptor, which is a uniform buffer object.
+		// It is possible for the shader variable to represent an array of uniform buffer objects, and descriptorCount specifies the
+		// number of values in the array. This could be used to specify a transformation for each of the bones in a skeleton for 
+		// skeletal animation, for example. Our MVP transformation is in a single uniform buffer object, so we're using a 
+		// descriptorCount of 1.
+		VkDescriptorSetLayoutBinding uboLayoutBinding{};
+		uboLayoutBinding.binding = 0;
+		uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		uboLayoutBinding.descriptorCount = 1;
+
+		// We also need to specify in which shader stages the descriptor is going to be referenced. The stageFlags field can be a 
+		// combination of VkShaderStageFlagBits values or the value VK_SHADER_STAGE_ALL_GRAPHICS. In our case, we're only referencing
+		// the descriptor from the vertex shader.
+		uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+		// The pImmutableSamplers field is only relevant for image sampling related descriptors. leave this to its default value.
+		uboLayoutBinding.pImmutableSamplers = nullptr; // Optional
+
+		// We can create it using vkCreateDescriptorSetLayout. This function accepts a simple VkDescriptorSetLayoutCreateInfo with the array of bindings:
+		VkDescriptorSetLayoutCreateInfo layoutInfo{};
+		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		layoutInfo.bindingCount = 1;
+		layoutInfo.pBindings = &uboLayoutBinding;
+
+		if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create descriptor set layout!");
+		}
+		
+	}
+
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// create the graphics pipeline
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1271,12 +1330,12 @@ private:
 		// You can use uniform values in shaders, which are globals similar to dynamic state variables that can be changed at drawing
 		// time to alter the behavior of your shaders without having to recreate them. They are commonly used to pass the transformation
 		// matrix to the vertex shader, or to create texture samplers in the fragment shader.
-		// These uniform values need to be specified during pipeline creation by creating a VkPipelineLayout object. Even though we won't
-		// be using them until a future chapter, we are still required to create an empty pipeline layout.
+		// These uniform values need to be specified during pipeline creation by creating a VkPipelineLayout object.
+		// We need to specify the descriptor set layout during pipeline creation to tell Vulkan which descriptors the shaders will be using
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		pipelineLayoutInfo.setLayoutCount = 0; // Optional
-		pipelineLayoutInfo.pSetLayouts = nullptr; // Optional
+		pipelineLayoutInfo.setLayoutCount = 1;
+		pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
 		pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
 		pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
 
@@ -1476,6 +1535,64 @@ private:
 
 		vkDestroyBuffer(device, stagingBuffer, nullptr);
 		vkFreeMemory(device, stagingBufferMemory, nullptr);
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// A uniform buffer is a buffer that is made accessible in a read-only fashion to shaders so that the shaders can read constant 
+	// parameter data. This is another example of a step that you have to perform in a Vulkan program that you wouldn't have to do 
+	// in another graphics API.
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	void createUniformBuffers() {
+		// We're going to write a separate function that updates the uniform buffer with a new transformation every frame, so there will be no vkMapMemory here.
+		// The uniform data will be used for all draw calls, so the buffer containing it should only be destroyed when we stop rendering. 
+		// Since it also depends on the number of swap chain images, which could change after a recreation, we'll clean it up in cleanupSwapChain
+		VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+
+		uniformBuffers.resize(swapChainImages.size());
+		uniformBuffersMemory.resize(swapChainImages.size());
+
+		for (size_t i = 0; i < swapChainImages.size(); i++) {
+			createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffers[i], uniformBuffersMemory[i]);
+		}
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// This function will generate a new transformation every frame to make the geometry spin around.
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	void updateUniformBuffer(uint32_t currentImage) {
+		// start out with some logic to calculate the time in seconds since rendering has started with floating point accuracy.
+		static auto startTime	= std::chrono::high_resolution_clock::now();
+		auto currentTime		= std::chrono::high_resolution_clock::now();
+		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+		// now define the model, view, and projection transformations in the uniform buffer object. The model rotation will be a 
+		// simple rotation around the Z-axis using the time variable
+		// The glm::rotate function takes an existing transformation, rotation angle and rotation axis as parameters. The 
+		// glm::mat4(1.0f) constructor returns an identity matrix. Using a rotation angle of time * glm::radians(90.0f) accomplishes
+		// the rotation of 90 degrees per second.
+		UniformBufferObject ubo{};
+		ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+
+		// For the view transformation I've decided to look at the geometry from above at a 45 degree angle. The glm::lookAt function
+		// takes the eye position, center position and up axis as parameters.
+		ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+
+		// I've chosen to use a perspective projection with a 45 degree vertical field-of-view. The other parameters are the aspect 
+		// ratio, near and far view planes. It is important to use the current swap chain extent to calculate the aspect ratio to 
+		// take into account the new width and height of the window after a resize.
+		ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
+
+		// GLM was originally designed for OpenGL, where the Y coordinate of the clip coordinates is inverted. The easiest way to 
+		// compensate for that is to flip the sign on the scaling factor of the Y axis in the projection matrix. If you don't do 
+		// this, then the image will be rendered upside down.
+		ubo.proj[1][1] *= -1;
+
+		// All of the transformations are defined now, so we can copy the data in the uniform buffer object to the current uniform
+		// buffer. This happens in exactly the same way as we did for vertex buffers, except without a staging buffer
+		void* data;
+		vkMapMemory(device, uniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);
+		memcpy(data, &ubo, sizeof(ubo));
+		vkUnmapMemory(device, uniformBuffersMemory[currentImage]);
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1777,6 +1894,9 @@ private:
 		uint32_t imageIndex;
 		VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
 
+		// now we know which swap chain image we're going to aquire. update the uniform buffer with it.
+		updateUniformBuffer(imageIndex);
+
 		// If the swap chain turns out to be out of date when attempting to acquire an image, then it is no longer possible to present
 		// to it. Therefore we should immediately recreate the swap chain and try again in the next drawFrame call.
 		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
@@ -1867,6 +1987,7 @@ private:
 		currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 	}
 
+
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// create the semaphores (general name for a mutex) and fences to use in syncronizing the drawing of frames as well as syncing the CPU and GPU
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1909,6 +2030,12 @@ private:
 		}
 
 		vkDestroySwapchainKHR(device, swapChain, nullptr);
+
+		// uniform buffers depends on the number of images in the swapchain so it is cleaned up here. dont forget to recreate it in recreateSwapChain()
+		for (size_t i = 0; i < swapChainImages.size(); i++) {
+			vkDestroyBuffer(device, uniformBuffers[i], nullptr);
+			vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
+		}
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1935,6 +2062,7 @@ private:
 		createRenderPass();
 		createGraphicsPipeline();
 		createFrameBuffers();
+		createUniformBuffers();
 		createCommandBuffers();
 	}
 
