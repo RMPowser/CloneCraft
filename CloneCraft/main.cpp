@@ -69,7 +69,6 @@ struct SwapChainSupportDetails {
 	std::vector<VkPresentModeKHR> presentModes;
 };
 
-// The data in the matrices is binary compatible with the way the shader expects it, so later we can just memcpy a UniformBufferObject to a VkBuffer.
 struct UniformBufferObject {
 	alignas(16) glm::mat4 model;
 	alignas(16) glm::mat4 view;
@@ -161,20 +160,6 @@ VkResult CreateDebugUtilsMessengerEXT(
 	}
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// destroys the dubug messenger 
-//
-// DestroyDebugUtilsMessengerEXT parameters:
-//      instance: the instance where the callback was created.
-//      debugMessenger: the VkDebugUtilsMessengerEXT object to destroy. messenger is an externally synchronized object and must 
-//                      not be used on more than one thread at a time. This means that vkDestroyDebugUtilsMessengerEXT MUST NOT 
-//                      be called when a callback is active.
-//      pAllocator: (always NULL in this program) controls host memory allocation as described in the Memory Allocation chapter. https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html#memory-allocation
-//
-// vkGetInstanceProcAddr parameters: 
-//      instance: instance that the function pointer will be compatible with, or NULL for commands not dependent on any instance
-//      pName: name of the command to obtain
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void DestroyDebugUtilsMessengerEXT(
 	VkInstance                      instance, 
 	VkDebugUtilsMessengerEXT        debugMessenger, 
@@ -710,24 +695,11 @@ private:
 		VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
 		VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities);
 
-		// 1/2 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		// Aside from the properties above we also have to decide how many images we would like to have in the swap chain. The 
-		// implementation specifies the minimum number that it requires to function:
-		// uint32_t imageCount = swapChainSupport.capabilities.minImageCount;
-		// However, simply sticking to this minimum means that we may sometimes have to wait on the driver to complete internal 
-		// operations before we can acquire another image to render to. Therefore it is recommended to request at least one more 
-		// image than the minimum:
-		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
 
-		// 2/2 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		// We should also make sure to not exceed the maximum number of images while doing this, where 0 is a special value that 
-		// means that there is no maximum:
-		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
 			imageCount = swapChainSupport.capabilities.maxImageCount;
 		}
-
 
 		VkSwapchainCreateInfoKHR createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -740,24 +712,6 @@ private:
 		createInfo.imageArrayLayers = 1; // specifies the amount of layers each image consists of. always 1 unless developing a stereoscopic 3D application.
 		createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; // specifies what kind of operations we'll use the images in the swap chain for. render directly to them for now, which means that they're used as color attachment. also possible to render images to a separate image first to perform operations like post-processing. In that case you may use a value like VK_IMAGE_USAGE_TRANSFER_DST_BIT instead and use a memory operation to transfer the rendered image to a swap chain image.
 
-
-		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		// Next, we need to specify how to handle swap chain images that will be used across multiple queue families. This will be 
-		// the case if the graphics queue family is different from the presentation queue. We'll be drawing on the images in the swap
-		// chain from the graphics queue and then submitting them on the presentation queue.
-		// 
-		// There are two ways to handle images that are accessed from multiple queues:
-		//      VK_SHARING_MODE_EXCLUSIVE: An image is owned by one queue family at a time and ownership must be explicitly 
-		//          transfered before using it in another queue family.This option offers the best performance.
-		// 
-		//      VK_SHARING_MODE_CONCURRENT: Images can be used across multiple queue families without explicit ownership transfers.
-		//
-		// If the queue families differ, then we'll be using the concurrent mode to avoid having to deal with ownership. Concurrent 
-		// mode requires you to specify in advance between which queue families ownership will be shared using the 
-		// queueFamilyIndexCount and pQueueFamilyIndices parameters. If the graphics queue family and presentation queue family are 
-		// the same, which will be the case on most hardware, then we should stick to exclusive mode, because concurrent mode 
-		// requires you to specify at least two distinct queue families.
-		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
 		uint32_t queueFamilyIndices[] = { indices.graphicsFamily.value(), indices.presentFamily.value() };
 
@@ -771,35 +725,20 @@ private:
 			createInfo.pQueueFamilyIndices = nullptr; // Optional
 		}
 
-		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		// We can specify that a certain transform should be applied to images in the swap chain if it is supported 
-		// (supportedTransforms in capabilities), like a 90 degree clockwise rotation or horizontal flip. To specify that you do not
-		// want any transformation, simply specify the current transformation.
-		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		createInfo.preTransform = swapChainSupport.capabilities.currentTransform;
-
-
 		createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR; //The compositeAlpha field specifies if the alpha channel should be used for blending with other windows in the window system. You'll almost always want to simply ignore the alpha channel, hence VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR.
-		
-		// The presentMode member speaks for itself. If the clipped member is set to VK_TRUE then that means that we don't care about the color of pixels that are obscured, for example because another window is in front of them. Unless you really need to be able to read these pixels back and get predictable results, you'll get the best performance by enabling clipping.
 		createInfo.presentMode = presentMode;
 		createInfo.clipped = VK_TRUE;
-
-		// That leaves one last field, oldSwapChain. With Vulkan it's possible that your swap chain becomes invalid or unoptimized while your application is running, for example because the window was resized. In that case the swap chain actually needs to be recreated from scratch and a reference to the old one must be specified in this field. This is a complex topic that we'll learn more about in a future chapter. For now we'll assume that we'll only ever create one swap chain.
 		createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-		// create the swapchain. ezpz
-		// params: (logical device, swap chain createinfo, pAllocator always nullptr in this program, somewhere to store the swap chain)
 		if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create swap chain!");
 		}
 
-		// Retrieving swapchain images is very similar to the other times where we retrieved an array of objects from Vulkan. Remember that we only specified a MINIMUM number of images in the swap chain, so the implementation is allowed to create a swap chain with more. That's why we'll first query the final number of images with vkGetSwapchainImagesKHR, then resize the container and finally call it again to retrieve the handles.
 		vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
 		swapChainImages.resize(imageCount);
 		vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
 
-		// need these later
 		swapChainImageFormat = surfaceFormat.format;
 		swapChainExtent = extent;
 	}
@@ -819,29 +758,6 @@ private:
 		return availableFormats[0];
 	}
 
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// choose a presentation mode preferring VK_PRESENT_MODE_MAILBOX_KHR for triple buffering
-	//
-	// There are four possible modes available in Vulkan:
-	//      VK_PRESENT_MODE_IMMEDIATE_KHR: Images submitted by your application are transferred to the screen right away, which may 
-	//          result in tearing.
-	//
-	//      VK_PRESENT_MODE_FIFO_KHR: The swap chain is a queue where the display takes an image from the front of the queue when 
-	//          the display is refreshed and the program inserts rendered images at the back of the queue. If the queue is full then
-	//          the program has to wait. This is most similar to vertical sync as found in modern games. The moment that the display
-	//          is refreshed is known as "vertical blank".
-	//
-	//      VK_PRESENT_MODE_FIFO_RELAXED_KHR: This mode only differs from the previous one if the application is late and the queue 
-	//          was empty at the last vertical blank. Instead of waiting for the next vertical blank, the image is transferred right 
-	//          away when it finally arrives. This may result in visible tearing.
-	//
-	//      VK_PRESENT_MODE_MAILBOX_KHR: This is another variation of the second mode. Instead of blocking the application when the 
-	//          queue is full, the images that are already queued are simply replaced with the newer ones. This mode can be used to 
-	//          implement triple buffering, which allows you to avoid tearing with significantly less latency issues than standard 
-	//          vertical sync that uses double buffering.
-	//
-	// Only the VK_PRESENT_MODE_FIFO_KHR mode is guaranteed to be available.
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) {
 		for (const auto& availablePresentMode : availablePresentModes) {
 			if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
@@ -852,18 +768,6 @@ private:
 		return VK_PRESENT_MODE_FIFO_KHR;
 	}
 
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// The swap extent is the resolution of the swap chain images and it's almost always exactly equal to the resolution of the 
-	// window that we're drawing to. The range of the possible resolutions is defined in the VkSurfaceCapabilitiesKHR structure. 
-	// Vulkan tells us to match the resolution of the window by setting the width and height in the currentExtent member. However, 
-	// some window managers do allow us to differ here and this is indicated by setting the width and height in currentExtent to a 
-	// special value: the maximum value of uint32_t. In that case we'll pick the resolution that best matches the window within the 
-	// minImageExtent and maxImageExtent bounds.
-	// The max and min functions are used here to clamp the value of width and height between the allowed minimum and 
-	// maximum extents that are supported by the implementation.
-	// To handle window resizes properly, we also need to query the current size of the framebuffer to make sure that the swap chain 
-	// images have the (new) right size.
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) {
 		if (capabilities.currentExtent.width != UINT32_MAX) {
 			return capabilities.currentExtent;
@@ -896,21 +800,15 @@ private:
 		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 		samplerInfo.magFilter = VK_FILTER_NEAREST;
 		samplerInfo.minFilter = VK_FILTER_NEAREST;
-
 		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 		samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-
 		samplerInfo.anisotropyEnable = VK_TRUE;
 		samplerInfo.maxAnisotropy = 16.0f;
-
 		samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-
 		samplerInfo.unnormalizedCoordinates = VK_FALSE;
-
 		samplerInfo.compareEnable = VK_FALSE;
 		samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-
 		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 		samplerInfo.mipLodBias = 0.0f;
 		samplerInfo.minLod = 0.0f;
@@ -927,50 +825,13 @@ private:
 	// the rendering operations. All of this information is wrapped in a render pass object.
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	void createRenderPass() {
-		// attachment description
-		// In our case we'll have just a single color buffer attachment represented by one of the images from the swap chain.
-		// The format of the color attachment should match the format of the swap chain images, and we're not doing anything with multisampling yet, so we'll stick to 1 sample.
 		VkAttachmentDescription colorAttachment{};
 		colorAttachment.format = swapChainImageFormat;
 		colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-
-		// The loadOp and storeOp determine what to do with the data in the attachment before rendering and after rendering. 
-		// We have the following choices for loadOp:
-		//
-		//		VK_ATTACHMENT_LOAD_OP_LOAD: Preserve the existing contents of the attachment
-		//		VK_ATTACHMENT_LOAD_OP_CLEAR : Clear the values to a constant at the start
-		//		VK_ATTACHMENT_LOAD_OP_DONT_CARE : Existing contents are undefined; we don't care about them
-		//
-		// In our case we're going to use the clear operation to clear the framebuffer to black before drawing a new frame. 
-		// There are only two possibilities for the storeOp:
-		//
-		//		VK_ATTACHMENT_STORE_OP_STORE: Rendered contents will be stored in memory and can be read later
-		//		VK_ATTACHMENT_STORE_OP_DONT_CARE : Contents of the framebuffer will be undefined after the rendering operation
-		//
-		// We're interested in seeing the rendered triangle on the screen, so we're going with the store operation.
 		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-
-		// The loadOp and storeOp apply to color and depth data, and stencilLoadOp/stencilStoreOp apply to stencil data. This 
-		// application won't do anything with the stencil buffer, so the results of loading and storing are irrelevant.
 		colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-
-		// Textures and framebuffers in Vulkan are represented by VkImage objects with a certain pixel format, however the layout of
-		// the pixels in memory can change based on what you're trying to do with an image.
-		// Some of the most common layouts are:
-		//
-		//		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL: Images used as color attachment
-		//		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR : Images to be presented in the swap chain
-		//		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL : Images to be used as destination for a memory copy operation
-		//
-		// What's important to know right now is that images need to be transitioned to specific layouts that are suitable for the
-		// operation that they're going to be involved in next. The initialLayout specifies which layout the image will have before
-		// the render pass begins. The finalLayout specifies the layout to automatically transition to when the render pass finishes.
-		// Using VK_IMAGE_LAYOUT_UNDEFINED for initialLayout means that we don't care what previous layout the image was in. The 
-		// caveat of this special value is that the contents of the image are not guaranteed to be preserved, but that doesn't matter
-		// since we're going to clear it anyway. We want the image to be ready for presentation using the swap chain after rendering,
-		// which is why we use VK_IMAGE_LAYOUT_PRESENT_SRC_KHR as finalLayout.
 		colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
@@ -984,18 +845,6 @@ private:
 		depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-		// Subpasses and attachment references
-		// A single render pass can consist of multiple subpasses. Subpasses are subsequent rendering operations that depend on the 
-		// contents of framebuffers in previous passes, for example a sequence of post-processing effects that are applied one after
-		// another. If you group these rendering operations into one render pass, then Vulkan is able to reorder the operations and 
-		// conserve memory bandwidth for possibly better performance. For our very first triangle, however, we'll stick to a single subpass.
-		// Every subpass references one or more of the attachments that we've described using the structure in the previous sections.
-		//
-		// The attachment parameter specifies which attachment to reference by its index in the attachment descriptions array. Our 
-		// array consists of a single VkAttachmentDescription, so its index is 0. The layout specifies which layout we would like 
-		// the attachment to have during a subpass that uses this reference. Vulkan will automatically transition the attachment to 
-		// this layout when the subpass is started. We intend to use the attachment to function as a color buffer and the 
-		// VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL layout will give us the best performance, as its name implies.
 		VkAttachmentReference colorAttachmentRef{};
 		colorAttachmentRef.attachment = 0;
 		colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -1004,73 +853,30 @@ private:
 		depthAttachmentRef.attachment = 1;
 		depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-		// The subpass is described using a VkSubpassDescription structure. Vulkan also supports compute subpasses, so we have to be
-		// explicit about this being a graphics subpass.
 		VkSubpassDescription subpass{};
 		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-
-		// specify the reference to the color attachment 
-		// The index of the attachment in this array is directly referenced from the fragment shader with the layout(location = 0) 
-		// out vec4 outColor directive!
-		// The following other types of attachments can be referenced by a subpass:
-		//
-		//		pInputAttachments: Attachments that are read from a shader
-		//		pResolveAttachments : Attachments used for multisampling color attachments
-		//		pDepthStencilAttachment : Attachment for depthand stencil data
-		//		pPreserveAttachments : Attachments that are not used by this subpass, but for which the data must be preserved
 		subpass.colorAttachmentCount = 1;
 		subpass.pColorAttachments = &colorAttachmentRef;
 		subpass.pDepthStencilAttachment = &depthAttachmentRef;
 
-		// Remember that the subpasses in a render pass automatically take care of image layout transitions. These transitions 
-		// are controlled by subpass dependencies, which specify memory and execution dependencies between subpasses. We have 
-		// only a single subpass right now, but the operations right before and right after this subpass also count as implicit
-		// "subpasses". There are two built-in dependencies that take care of the transition at the start of the render pass 
-		// and at the end of the render pass, but the former does not occur at the right time. It assumes that the transition 
-		// occurs at the start of the pipeline, but we haven't acquired the image yet at that point! There are two ways to deal
-		// with this problem. We could change the waitStages for the imageAvailableSemaphore to VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
-		// to ensure that the render passes don't begin until the image is available, or we can make the render pass wait for 
-		// the VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT stage. I've decided to go with the second option here, because it's
-		// a good excuse to have a look at subpass dependencies and how they work.
-		// 
-		// The first two fields specify the indices of the dependency and the dependent subpass. The special value 
-		// VK_SUBPASS_EXTERNAL refers to the implicit subpass before or after the render pass depending on whether it is 
-		// specified in srcSubpass or dstSubpass. The index 0 refers to our subpass, which is the first and only one. The 
-		// dstSubpass must always be higher than srcSubpass to prevent cycles in the dependency graph 
-		// (unless one of the subpasses is VK_SUBPASS_EXTERNAL).
 		VkSubpassDependency dependency{};
 		dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 		dependency.dstSubpass = 0;
-
-		// The next two fields specify the operations to wait on and the stages in which these operations occur. We need to wait
-		// for the swap chain to finish reading from the image before we can access it. This can be accomplished by waiting on 
-		// the color attachment output stage itself.
 		dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 		dependency.srcAccessMask = 0;
-
-		// The operations that should wait on this are in the color attachment stage and involve the writing of the color 
-		// attachment. These settings will prevent the transition from happening until it's actually necessary (and allowed) which
-		// is when we want to start writing colors to it.
 		dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 		dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
 		std::array<VkAttachmentDescription, 2> attachments = { colorAttachment, depthAttachment };
 
-		// render pass
-		// The render pass object can be created by filling in the VkRenderPassCreateInfo structure with an array of attachments
-		// and subpasses. The VkAttachmentReference objects reference attachments using the indices of this array.
 		VkRenderPassCreateInfo renderPassInfo{};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 		renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
 		renderPassInfo.pAttachments = attachments.data();
 		renderPassInfo.subpassCount = 1;
 		renderPassInfo.pSubpasses = &subpass;
-
-		// The VkRenderPassCreateInfo struct has two fields to specify an array of dependencies.
 		renderPassInfo.dependencyCount = 1;
 		renderPassInfo.pDependencies = &dependency;
-
-
 
 		if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create render pass!");
@@ -1086,7 +892,7 @@ private:
 		// laid out row by row with 4 bytes per pixel in the case of STBI_rgb_alpha for a total of texWidth * texHeight * 4 values.
 		int texWidth, texHeight, texChannels;
 		stbi_uc* pixels = stbi_load(TEXTURE_PATH.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-		VkDeviceSize imageSize = texWidth * texHeight * 4;
+		VkDeviceSize imageSize = (uint64_t)texWidth * (uint64_t)texHeight * 4;
 
 		if (!pixels) {
 			throw std::runtime_error("failed to load texture image!");
@@ -1926,37 +1732,13 @@ private:
 	// semaphores the best fit.
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	void drawFrame() {
-		// Wait for the previous frame to be finished. The vkWaitForFences function takes an array of fences and waits for either 
-		// any or all of them to be signaled before returning. The VK_TRUE we pass here indicates that we want to wait for all fences,
-		// but in the case of a single one it obviously doesn't matter. Just like vkAcquireNextImageKHR this function also takes a 
-		// timeout. Unlike the semaphores, we manually need to restore the fence to the unsignaled state by resetting it with the 
-		// vkResetFences call.
 		vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 		
-
-		// We'll need one semaphore to signal that an image has been acquired and is ready for rendering, and another one to signal
-		// that rendering has finished and presentation can happen. These are created in createSemaphores() and are stored in the 
-		// following class members:
-		//		std::vector<VkSemaphore> imageAvailableSemaphores;
-		//		std::vector<VkSemaphore> renderFinishedSemaphores;	
-
-		// As mentioned before, the first thing we need to do is acquire an image from the swap chain. Recall that the swap chain is
-		// an extension feature, so we must use a function with the vk*KHR naming convention. The first two parameters of 
-		// vkAcquireNextImageKHR are the logical device and the swap chain from which we wish to acquire an image. The third 
-		// parameter specifies a timeout in nanoseconds for an image to become available. Using the maximum value of a 64 bit 
-		// unsigned integer disables the timeout. The next two parameters specify synchronization objects that are to be signaled 
-		// when the presentation engine is finished using the image. That's the point in time where we can start drawing to it. It 
-		// is possible to specify a semaphore, fence or both. We're going to use our imageAvailableSemaphore for that purpose here.
-		// The last parameter specifies a variable to output the index of the swap chain image that has become available. The index
-		// refers to the VkImage in our swapChainImages array. We're going to use that index to pick the right command buffer.
 		uint32_t imageIndex;
 		VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
 
-		// now we know which swap chain image we're going to aquire. update the uniform buffer with it.
 		updateUniformBuffer(imageIndex);
 
-		// If the swap chain turns out to be out of date when attempting to acquire an image, then it is no longer possible to present
-		// to it. Therefore we should immediately recreate the swap chain and try again in the next drawFrame call.
 		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 			recreateSwapChain();
 			return;
@@ -1971,12 +1753,6 @@ private:
 		// Mark the image as now being in use by this frame
 		imagesInFlight[imageIndex] = inFlightFences[currentFrame];
 
-		// Queue submission and synchronization is configured through parameters in the VkSubmitInfo structure. The first three 
-		// parameters specify which semaphores to wait on before execution begins and in which stage(s) of the pipeline to wait. We
-		// want to wait with writing colors to the image until it's available, so we're specifying the stage of the graphics pipeline
-		// that writes to the color attachment. That means that theoretically the implementation can already start executing our 
-		// vertex shader and such while the image is not yet available. Each entry in the waitStages array corresponds to the 
-		// semaphore with the same index in pWaitSemaphores.
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
@@ -1985,55 +1761,32 @@ private:
 		submitInfo.waitSemaphoreCount = 1;
 		submitInfo.pWaitSemaphores = waitSemaphores;
 		submitInfo.pWaitDstStageMask = waitStages;
-
-		// The next two parameters specify which command buffers to actually submit for execution. As mentioned earlier, we should 
-		// submit the command buffer that binds the swap chain image we just acquired as color attachment.
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
 
-		// The signalSemaphoreCount and pSignalSemaphores parameters specify which semaphores to signal once the command buffer(s) 
-		// have finished execution. In our case we're using the renderFinishedSemaphore for that purpose.
 		VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
 		submitInfo.signalSemaphoreCount = 1;
 		submitInfo.pSignalSemaphores = signalSemaphores;
 
-		// We can now submit the command buffer to the graphics queue using vkQueueSubmit. The function takes an array of 
-		// VkSubmitInfo structures as argument for efficiency when the workload is much larger. The last parameter is an optional 
-		// parameter to pass a fence that should be signaled when the command buffer finishes executing. We can use this to signal 
-		// that a frame has finished.
 		vkResetFences(device, 1, &inFlightFences[currentFrame]);
 
 		if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
 			throw std::runtime_error("failed to submit draw command buffer!");
 		}
 
-		// The last step of drawing a frame is submitting the result back to the swap chain to have it eventually show up on the 
-		// screen. Presentation is configured through a VkPresentInfoKHR structure.
-		// 
-		// The first two parameters specify which semaphores to wait on before presentation can happen, just like VkSubmitInfo.
 		VkPresentInfoKHR presentInfo{};
 		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 		presentInfo.waitSemaphoreCount = 1;
 		presentInfo.pWaitSemaphores = signalSemaphores;
 
-		// The next two parameters specify the swap chains to present images to and the index of the image for each swap chain. 
-		// This will almost always be a single one.
 		VkSwapchainKHR swapChains[] = { swapChain };
 		presentInfo.swapchainCount = 1;
 		presentInfo.pSwapchains = swapChains;
 		presentInfo.pImageIndices = &imageIndex;
-
-		// There is one last optional parameter called pResults. It allows you to specify an array of VkResult values to check for 
-		// every individual swap chain if presentation was successful. It's not necessary if you're only using a single swap chain, 
-		// because you can simply use the return value of the present function.
 		presentInfo.pResults = nullptr; // Optional
 
-		// The vkQueuePresentKHR function submits the request to present an image to the swap chain.
 		result = vkQueuePresentKHR(presentQueue, &presentInfo);
 
-		// In this case we will also recreate the swap chain if it is suboptimal, because we want the best possible result.
-		// It is important to check if the framebufferwasResized after vkQueuePresentKHR to ensure that the semaphores are in a 
-		// consistent state, otherwise a signalled semaphore may never be properly waited upon. 
 		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
 			framebufferResized = false;
 			recreateSwapChain();
@@ -2047,7 +1800,7 @@ private:
 
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// create the semaphores (general name for a mutex) and fences to use in syncronizing the drawing of frames as well as syncing the CPU and GPU
+	// create the semaphores and fences to use in syncronizing the drawing of frames as well as syncing the CPU and GPU
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	void createSyncObjects() {
 		imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
