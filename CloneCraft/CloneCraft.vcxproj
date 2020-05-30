@@ -169,22 +169,7 @@
     <None Include="Shaders\vert.spv" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="buffer.h" />
-    <ClInclude Include="commandPool.h" />
-    <ClInclude Include="debugger.h" />
-    <ClInclude Include="descriptor.h" />
-    <ClInclude Include="device.h" />
-    <ClInclude Include="globals.h" />
-    <ClInclude Include="graphicsPipeline.h" />
-    <ClInclude Include="imageView.h" />
     <ClInclude Include="INCLUDER.h" />
-    <ClInclude Include="queueFamily.h" />
-    <ClInclude Include="renderPass.h" />
-    <ClInclude Include="swapchain.h" />
-    <ClInclude Include="sync.h" />
-    <ClInclude Include="texture.h" />
-    <ClInclude Include="uniformBufferObject.h" />
-    <ClInclude Include="vertex.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

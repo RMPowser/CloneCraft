@@ -38,20 +38,4 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/hash.hpp>
 
-#include "globals.h"
-#include "debugger.h"
-#include "vertex.h"
-#include "uniformBufferObject.h"
-#include "queueFamily.h"
-#include "swapchain.h"
-#include "imageView.h"
-#include "texture.h"
-#include "buffer.h"
-#include "sync.h"
-#include "commandPool.h"
-#include "renderPass.h"
-#include "graphicsPipeline.h"
-#include "descriptor.h"
-#include "device.h"
-
 #define PAUSE system("pause")
