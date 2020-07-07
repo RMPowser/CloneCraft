@@ -1,7 +1,5 @@
 #pragma once
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
-
+#include "WindowManager.h"
 #include "glm.h"
 
 #define STB_IMAGE_IMPLEMENTATION // The header only defines the prototypes of the functions by default. One code file needs to include the header with the STB_IMAGE_IMPLEMENTATION definition to include the function bodies, otherwise we'll get linking errors.
@@ -161,14 +159,14 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
 class CloneCraftApplication {
 public:
 	void run() {
-		initWindow();
+		windowManager.CreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE);
 		initVulkan();
 		mainLoop();
 		cleanup();
 	}
 
 private:
-	GLFWwindow* window;
+	WindowManager windowManager;
 	VkInstance instance;
 	VkDebugUtilsMessengerEXT debugMessenger;
 	VkSurfaceKHR surface;
@@ -193,7 +191,6 @@ private:
 	std::vector<VkFence> inFlightFences;
 	std::vector<VkFence> imagesInFlight;
 	size_t currentFrame = 0; // keeps track of the current frame. no way! :D
-	bool framebufferResized = false;
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;
 	VkBuffer vertexBuffer;
@@ -218,27 +215,6 @@ private:
 		return camera;
 	}
 
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// create a window using glfw because vulkan cant create windows
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	void initWindow() {
-		glfwInit();
-
-		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-
-		window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE, nullptr, nullptr);
-		glfwSetWindowUserPointer(window, this);
-		glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
-	}
-
-	// The reason that we're creating a static function as a callback is because GLFW does not know how to properly call a member 
-	// function with the right 'this' pointer to our HelloTriangleApplication instance. However, we do get a reference to the 
-	// GLFWwindow in the callback and there is another GLFW function that allows you to store an arbitrary pointer inside of it called
-	// glfwSetWindowUserPointer().
-	static void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
-		auto app = reinterpret_cast<CloneCraftApplication*>(glfwGetWindowUserPointer(window));
-		app->framebufferResized = true;
-	}
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// initialize vulkan using an order of functions
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -273,7 +249,7 @@ private:
 	// main loop
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	void mainLoop() {
-		while (!glfwWindowShouldClose(window)) {
+		while (!glfwWindowShouldClose(windowManager.GetWindow())) {
 			glfwPollEvents();
 			drawFrame();
 		}
@@ -317,10 +293,6 @@ private:
 
 		vkDestroySurfaceKHR(instance, surface, nullptr);
 		vkDestroyInstance(instance, nullptr);
-
-		glfwDestroyWindow(window);
-
-		glfwTerminate();
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -674,7 +646,7 @@ private:
 	// create a surface for the vulkan instance to render to
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	void createSurface() {
-		if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS) {
+		if (glfwCreateWindowSurface(instance, windowManager.GetWindow(), nullptr, &surface) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create window surface!");
 		}
 	}
@@ -767,7 +739,7 @@ private:
 			return capabilities.currentExtent;
 		} else {
 			int width, height;
-			glfwGetFramebufferSize(window, &width, &height);
+			glfwGetFramebufferSize(windowManager.GetWindow(), &width, &height);
 
 			VkExtent2D actualExtent = { static_cast<uint32_t>(width), static_cast<uint32_t>(height) };
 
@@ -1780,8 +1752,8 @@ private:
 
 		result = vkQueuePresentKHR(presentQueue, &presentInfo);
 
-		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
-			framebufferResized = false;
+		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || windowManager.isFramebufferResized()) {
+			windowManager.SetFramebufferResized(false);
 			recreateSwapChain();
 		} else if (result != VK_SUCCESS) {
 			throw std::runtime_error("failed to present swap chain image!");
@@ -1859,7 +1831,7 @@ private:
 	void recreateSwapChain() {
 		int width = 0, height = 0;
 		while (width == 0 || height == 0) {
-			glfwGetFramebufferSize(window, &width, &height);
+			glfwGetFramebufferSize(windowManager.GetWindow(), &width, &height);
 			glfwWaitEvents();
 		}
 

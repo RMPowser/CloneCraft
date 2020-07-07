@@ -17,3 +17,20 @@ void WindowManager::CreateWindow(int WINDOW_WIDTH, int WINDOW_HEIGHT, const char
 		glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 	};
 }
+
+GLFWwindow* WindowManager::GetWindow() {
+	return window;
+}
+
+bool WindowManager::isFramebufferResized() {
+	return framebufferResized;
+}
+
+void WindowManager::SetFramebufferResized(bool value) {
+	framebufferResized = value;
+}
+
+void WindowManager::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
+	auto windowManager = reinterpret_cast<WindowManager*>(glfwGetWindowUserPointer(window));
+	windowManager->framebufferResized = true;
+}
