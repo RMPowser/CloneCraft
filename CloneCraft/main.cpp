@@ -1,7 +1,7 @@
 #include "CloneCraftApp.h"
 
 int main() {
-	CloneCraftApplication app;
+	CloneCraftApp app;
 
 	try {
 		app.run();

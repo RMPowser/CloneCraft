@@ -96,6 +96,9 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>C:\SDKs\VulkanSDK\1.2.135.0\Lib32;C:\SDKs\glfw-3.3.2.bin.WIN64\lib-vc2019;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <IgnoreAllDefaultLibraries>
+      </IgnoreAllDefaultLibraries>
+      <IgnoreSpecificDefaultLibraries>MSVCRT;</IgnoreSpecificDefaultLibraries>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -113,6 +116,9 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>C:\SDKs\VulkanSDK\1.2.135.0\Lib;C:\SDKs\glfw-3.3.2.bin.WIN64\lib-vc2019;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <IgnoreAllDefaultLibraries>
+      </IgnoreAllDefaultLibraries>
+      <IgnoreSpecificDefaultLibraries>MSVCRT;</IgnoreSpecificDefaultLibraries>
     </Link>
     <Bscmake>
       <PreserveSbr>true</PreserveSbr>
@@ -136,6 +142,9 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>C:\SDKs\VulkanSDK\1.2.135.0\Lib32;C:\SDKs\glfw-3.3.2.bin.WIN64\lib-vc2019;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <IgnoreAllDefaultLibraries>
+      </IgnoreAllDefaultLibraries>
+      <IgnoreSpecificDefaultLibraries>MSVCRT;</IgnoreSpecificDefaultLibraries>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -156,12 +165,16 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>C:\SDKs\VulkanSDK\1.2.135.0\Lib;C:\SDKs\glfw-3.3.2.bin.WIN64\lib-vc2019;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <IgnoreAllDefaultLibraries>
+      </IgnoreAllDefaultLibraries>
+      <IgnoreSpecificDefaultLibraries>MSVCRT;</IgnoreSpecificDefaultLibraries>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Frustum.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MatrixFunctions.cpp" />
+    <ClCompile Include="VKDebugMessengerManager.cpp" />
     <ClCompile Include="VKInstanceManager.cpp" />
     <ClCompile Include="WindowManager.cpp" />
   </ItemGroup>
@@ -178,7 +191,9 @@
     <ClInclude Include="Entity.h" />
     <ClInclude Include="Frustum.h" />
     <ClInclude Include="glm.h" />
+    <ClInclude Include="HelperFunctions.h" />
     <ClInclude Include="MatrixFunctions.h" />
+    <ClInclude Include="VKDebugMessengerManager.h" />
     <ClInclude Include="VKInstanceManager.h" />
     <ClInclude Include="WindowManager.h" />
   </ItemGroup>

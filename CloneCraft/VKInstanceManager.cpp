@@ -39,7 +39,7 @@ void VKInstanceManager::CreateVKInstance() {
 		createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
 		createInfo.ppEnabledLayerNames = validationLayers.data();
 
-		populateDebugMessengerCreateInfo(debugCreateInfo);
+		HelperFunctions::populateDebugMessengerCreateInfo(debugCreateInfo);
 		createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
 	} else {
 		createInfo.enabledLayerCount = 0;
@@ -109,18 +109,4 @@ std::vector<const char*> VKInstanceManager::getRequiredExtensions() {
 		std::cout << "\t" << extension << std::endl;
 	}
 	return extensions;
-}
-
-void VKInstanceManager::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo) {
-	createInfo = {};
-	createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-	createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-	createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-	createInfo.pfnUserCallback = debugCallback;
-}
-
-VkBool32 VKInstanceManager::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
-	std::cerr << pCallbackData->pMessage << std::endl;
-
-	return VK_FALSE;
 }

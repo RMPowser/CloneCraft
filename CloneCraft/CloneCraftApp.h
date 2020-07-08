@@ -1,6 +1,7 @@
 #pragma once
 #include "WindowManager.h"
-#include "VKInstanceManager.h"
+
+#include "VKDebugMessengerManager.h"
 #include "glm.h"
 
 #define STB_IMAGE_IMPLEMENTATION // The header only defines the prototypes of the functions by default. One code file needs to include the header with the STB_IMAGE_IMPLEMENTATION definition to include the function bodies, otherwise we'll get linking errors.
@@ -30,6 +31,7 @@
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/hash.hpp>
+
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // define globals
@@ -117,55 +119,27 @@ namespace std {
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// check debug
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// creates the dubug messenger to be used by the validation layers by getting a function pointer
-// 
-// CreateDebugUtilsMessengerEXT parameters:
-//      instance: the instance the messenger will be used with
-//      pCreateInfo: pointer to a VkDebugUtilsMessengerCreateInfoEXT structure containing the callback pointer, as well as defining conditions under which this messenger will trigger the callback
-//      pAllocator: (always NULL in this program) controls host memory allocation as described in the Memory Allocation chapter. https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html#memory-allocation
-//      pDebugMessenger: pointer to a VkDebugUtilsMessengerEXT handle in which the created object is returned.
-//
-// vkGetInstanceProcAddr parameters: 
-//      instance: instance that the function pointer will be compatible with, or NULL for commands not dependent on any instance
-//      pName: name of the command to obtain
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-VkResult CreateDebugUtilsMessengerEXT( VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) {
-	auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-	if (func != nullptr) {
-		return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-	} else {
-		return VK_ERROR_EXTENSION_NOT_PRESENT;
-	}
-}
-
-void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator) {
-	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-	if (func != nullptr) {
-		func(instance, debugMessenger, pAllocator);
-	}
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // class containing the application.
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-class CloneCraftApplication {
+class CloneCraftApp {
 public:
+	CloneCraftApp() : debugMessengerManager(instanceManager){
+	}
+
+	~CloneCraftApp() {
+		cleanup();
+	}
+
 	void run() {
 		windowManager.CreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE);
 		initVulkan();
 		mainLoop();
-		cleanup();
 	}
 
 private:
 	WindowManager windowManager;
 	VKInstanceManager instanceManager;
-	VkDebugUtilsMessengerEXT debugMessenger;
+	VKDebugMessengerManager debugMessengerManager;
 	VkSurfaceKHR surface;
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 	VkDevice device;
@@ -219,7 +193,7 @@ private:
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	void initVulkan() {
 		instanceManager.CreateVKInstance();
-		setupDebugMessenger();
+		debugMessengerManager.SetupDebugMessenger();
 		createSurface();
 		pickPhysicalDevice();
 		createLogicalDevice();
@@ -286,10 +260,6 @@ private:
 
 		vkDestroyDevice(device, nullptr);
 
-		if (instanceManager.isValidationLayersEnabled()) {
-			DestroyDebugUtilsMessengerEXT(instanceManager.GetInstance(), debugMessenger, nullptr);
-		}
-
 		vkDestroySurfaceKHR(instanceManager.GetInstance(), surface, nullptr);
 	}
 
@@ -329,33 +299,6 @@ private:
 
 				indices.push_back(uniqueVertices[vertex]);
 			}
-		}
-	}
-
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// populate the struct to use for creating the debug messenger 
-	// parameters: 
-	//      createInfo: struct to fill
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo) {
-		createInfo = {};
-		createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-		createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-		createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-		createInfo.pfnUserCallback = debugCallback;
-	}
-
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// create the debug messenger to use with the instance of vulkan if in debug mode using struct filled from populateDebugMessengerCreateInfo()
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	void setupDebugMessenger() {
-		if (!instanceManager.isValidationLayersEnabled()) return;
-
-		VkDebugUtilsMessengerCreateInfoEXT createInfo;
-		populateDebugMessengerCreateInfo(createInfo);
-
-		if (CreateDebugUtilsMessengerEXT(instanceManager.GetInstance(), &createInfo, nullptr, &debugMessenger) != VK_SUCCESS) {
-			throw std::runtime_error("failed to set up debug messenger!");
 		}
 	}
 

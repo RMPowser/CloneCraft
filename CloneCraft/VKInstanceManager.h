@@ -1,6 +1,6 @@
 #pragma once
-#include "vulkan/vulkan.h"
 #include "GLFW/glfw3.h"
+#include "HelperFunctions.h"
 #include <iostream>
 #include <vector>
 
@@ -22,7 +22,4 @@ private:
 	const std::vector<const char*> validationLayers = { "VK_LAYER_KHRONOS_validation" };
 	bool checkValidationLayerSupport();
 	std::vector<const char*> getRequiredExtensions();
-	void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
-	static VkBool32 debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
 };
-
