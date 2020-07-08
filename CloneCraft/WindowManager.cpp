@@ -8,7 +8,7 @@ WindowManager::~WindowManager() {
 	glfwTerminate();
 }
 
-void WindowManager::CreateWindow(int WINDOW_WIDTH, int WINDOW_HEIGHT, const char* WINDOW_TITLE) {
+void WindowManager::CreateWindow(uint32_t WINDOW_WIDTH, uint32_t WINDOW_HEIGHT, const char* WINDOW_TITLE) {
 	if (glfwInit() == GLFW_TRUE) {
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 

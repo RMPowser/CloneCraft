@@ -6,7 +6,7 @@ class WindowManager {
 public:
 	WindowManager();
 	~WindowManager();
-	void CreateWindow(int WINDOW_WIDTH, int WINDOW_HEIGHT, const char* WINDOW_TITLE);
+	void CreateWindow(uint32_t WINDOW_WIDTH, uint32_t WINDOW_HEIGHT, const char* WINDOW_TITLE);
 	GLFWwindow* GetWindow();
 	bool isFramebufferResized();
 	void SetFramebufferResized(bool value);

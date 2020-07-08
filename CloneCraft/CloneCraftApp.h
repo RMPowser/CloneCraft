@@ -1,5 +1,6 @@
 #pragma once
 #include "WindowManager.h"
+#include "VKInstanceManager.h"
 #include "glm.h"
 
 #define STB_IMAGE_IMPLEMENTATION // The header only defines the prototypes of the functions by default. One code file needs to include the header with the STB_IMAGE_IMPLEMENTATION definition to include the function bodies, otherwise we'll get linking errors.
@@ -118,11 +119,7 @@ namespace std {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // check debug
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#ifdef NDEBUG
-const bool enableValidationLayers = false;
-#else
-const bool enableValidationLayers = true;
-#endif
+
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // creates the dubug messenger to be used by the validation layers by getting a function pointer
@@ -167,7 +164,7 @@ public:
 
 private:
 	WindowManager windowManager;
-	VkInstance instance;
+	VKInstanceManager instanceManager;
 	VkDebugUtilsMessengerEXT debugMessenger;
 	VkSurfaceKHR surface;
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
@@ -215,11 +212,13 @@ private:
 		return camera;
 	}
 
+	
+
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// initialize vulkan using an order of functions
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	void initVulkan() {
-		createInstance();
+		instanceManager.CreateVKInstance();
 		setupDebugMessenger();
 		createSurface();
 		pickPhysicalDevice();
@@ -287,64 +286,11 @@ private:
 
 		vkDestroyDevice(device, nullptr);
 
-		if (enableValidationLayers) {
-			DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
+		if (instanceManager.isValidationLayersEnabled()) {
+			DestroyDebugUtilsMessengerEXT(instanceManager.GetInstance(), debugMessenger, nullptr);
 		}
 
-		vkDestroySurfaceKHR(instance, surface, nullptr);
-		vkDestroyInstance(instance, nullptr);
-	}
-
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// create an instance of vulkan and assign it to "instance" data member
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	void createInstance() {
-		try {
-			if (enableValidationLayers && !checkValidationLayerSupport()) {
-				throw std::runtime_error("validation layers requested, but not available!\n");
-			}
-		} catch (std::runtime_error& e) {
-			std::cerr << e.what();
-			std::terminate();
-		}
-
-		VkApplicationInfo appInfo{};
-		appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-		appInfo.pApplicationName = "CloneCraft";
-		appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-		appInfo.pEngineName = "CloneCraft Engine";
-		appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-		appInfo.apiVersion = VK_API_VERSION_1_0;
-
-		auto extensions = getRequiredExtensions();
-
-		VkInstanceCreateInfo createInfo{};
-		createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-		createInfo.pApplicationInfo = &appInfo;
-		createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
-		createInfo.ppEnabledExtensionNames = extensions.data();
-
-		VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo;
-		if (enableValidationLayers) {
-			createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
-			createInfo.ppEnabledLayerNames = validationLayers.data();
-
-			populateDebugMessengerCreateInfo(debugCreateInfo);
-			createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
-		} else {
-			createInfo.enabledLayerCount = 0;
-
-			createInfo.pNext = nullptr;
-		}
-
-		try {
-			if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
-				throw std::runtime_error("failed to create vulkan instance\n");
-			}
-		} catch (std::runtime_error& e) {
-			std::cerr << e.what();
-			std::terminate();
-		}
+		vkDestroySurfaceKHR(instanceManager.GetInstance(), surface, nullptr);
 	}
 
 	void loadModel() {
@@ -403,12 +349,12 @@ private:
 	// create the debug messenger to use with the instance of vulkan if in debug mode using struct filled from populateDebugMessengerCreateInfo()
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	void setupDebugMessenger() {
-		if (!enableValidationLayers) return;
+		if (!instanceManager.isValidationLayersEnabled()) return;
 
 		VkDebugUtilsMessengerCreateInfoEXT createInfo;
 		populateDebugMessengerCreateInfo(createInfo);
 
-		if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS) {
+		if (CreateDebugUtilsMessengerEXT(instanceManager.GetInstance(), &createInfo, nullptr, &debugMessenger) != VK_SUCCESS) {
 			throw std::runtime_error("failed to set up debug messenger!");
 		}
 	}
@@ -423,7 +369,7 @@ private:
 
 		std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
-		if (enableValidationLayers) {
+		if (instanceManager.isValidationLayersEnabled()) {
 			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 		}
 
@@ -471,14 +417,14 @@ private:
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	void pickPhysicalDevice() {
 		uint32_t deviceCount = 0;
-		vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+		vkEnumeratePhysicalDevices(instanceManager.GetInstance(), &deviceCount, nullptr);
 
 		if (deviceCount == 0) {
 			throw std::runtime_error("failed to find GPU with Vulkan support");
 		}
 
 		std::vector<VkPhysicalDevice> devices(deviceCount);
-		vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+		vkEnumeratePhysicalDevices(instanceManager.GetInstance(), &deviceCount, devices.data());
 
 		for (auto& device : devices) {
 			if (isDeviceSuitable(device)) {
@@ -525,7 +471,7 @@ private:
 		createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
 		createInfo.ppEnabledExtensionNames = deviceExtensions.data();
 
-		if (enableValidationLayers) {
+		if (instanceManager.GetInstance()) {
 			createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
 			createInfo.ppEnabledLayerNames = validationLayers.data();
 		} else {
@@ -646,7 +592,7 @@ private:
 	// create a surface for the vulkan instance to render to
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	void createSurface() {
-		if (glfwCreateWindowSurface(instance, windowManager.GetWindow(), nullptr, &surface) != VK_SUCCESS) {
+		if (glfwCreateWindowSurface(instanceManager.GetInstance(), windowManager.GetWindow(), nullptr, &surface) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create window surface!");
 		}
 	}

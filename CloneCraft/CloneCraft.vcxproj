@@ -162,6 +162,7 @@
     <ClCompile Include="Frustum.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MatrixFunctions.cpp" />
+    <ClCompile Include="VKInstanceManager.cpp" />
     <ClCompile Include="WindowManager.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -178,6 +179,7 @@
     <ClInclude Include="Frustum.h" />
     <ClInclude Include="glm.h" />
     <ClInclude Include="MatrixFunctions.h" />
+    <ClInclude Include="VKInstanceManager.h" />
     <ClInclude Include="WindowManager.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
