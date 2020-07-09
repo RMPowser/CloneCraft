@@ -1,6 +1,8 @@
 #pragma once
 #include "WindowManager.h"
+#include "VKInstanceManager.h"
 #include "VKDebugMessengerManager.h"
+#include "VKSurfaceManager.h"
 #include "Camera.h"
 #include "glm.h"
 #include <chrono>
@@ -116,7 +118,7 @@ private:
 	WindowManager windowManager;
 	VKInstanceManager instanceManager;
 	VKDebugMessengerManager debugMessengerManager;
-	VkSurfaceKHR surface;
+	VKSurfaceManager surfaceManager;
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 	VkDevice device;
 	VkQueue graphicsQueue;
@@ -172,7 +174,6 @@ private:
 	bool checkDeviceExtensionSupport(VkPhysicalDevice device);
 	SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
 	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
-	void createSurface();
 	void createSwapChain();
 	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
 	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);

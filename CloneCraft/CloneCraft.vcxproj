@@ -177,6 +177,7 @@
     <ClCompile Include="MatrixFunctions.cpp" />
     <ClCompile Include="VKDebugMessengerManager.cpp" />
     <ClCompile Include="VKInstanceManager.cpp" />
+    <ClCompile Include="VKSurfaceManager.cpp" />
     <ClCompile Include="WindowManager.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -196,6 +197,7 @@
     <ClInclude Include="MatrixFunctions.h" />
     <ClInclude Include="VKDebugMessengerManager.h" />
     <ClInclude Include="VKInstanceManager.h" />
+    <ClInclude Include="VKSurfaceManager.h" />
     <ClInclude Include="WindowManager.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

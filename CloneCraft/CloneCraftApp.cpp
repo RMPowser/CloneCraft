@@ -4,8 +4,7 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
-
-CloneCraftApp::CloneCraftApp() : debugMessengerManager(instanceManager) {}
+CloneCraftApp::CloneCraftApp() : debugMessengerManager(instanceManager), surfaceManager(instanceManager){}
 
 CloneCraftApp::~CloneCraftApp() {
 	cleanup();
@@ -24,7 +23,7 @@ const Camera& CloneCraftApp::getCamera() {
 void CloneCraftApp::initVulkan() {
 	instanceManager.CreateVKInstance();
 	debugMessengerManager.SetupDebugMessenger();
-	createSurface();
+	surfaceManager.createSurface(instanceManager, windowManager);
 	pickPhysicalDevice();
 	createLogicalDevice();
 	createSwapChain();
@@ -83,8 +82,6 @@ void CloneCraftApp::cleanup() {
 	vkDestroyCommandPool(device, commandPool, nullptr);
 
 	vkDestroyDevice(device, nullptr);
-
-	vkDestroySurfaceKHR(instanceManager.GetInstance(), surface, nullptr);
 }
 
 void CloneCraftApp::loadModel() {
@@ -276,22 +273,22 @@ bool CloneCraftApp::checkDeviceExtensionSupport(VkPhysicalDevice device) {
 CloneCraftApp::SwapChainSupportDetails CloneCraftApp::querySwapChainSupport(VkPhysicalDevice device) {
 	SwapChainSupportDetails details;
 
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surfaceManager.GetSurface(), &details.capabilities);
 
 	uint32_t formatCount;
-	vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
+	vkGetPhysicalDeviceSurfaceFormatsKHR(device, surfaceManager.GetSurface(), &formatCount, nullptr);
 
 	if (formatCount != 0) {
 		details.formats.resize(formatCount);
-		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data());
+		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surfaceManager.GetSurface(), &formatCount, details.formats.data());
 	}
 
 	uint32_t presentModeCount;
-	vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
+	vkGetPhysicalDeviceSurfacePresentModesKHR(device, surfaceManager.GetSurface(), &presentModeCount, nullptr);
 
 	if (presentModeCount != 0) {
 		details.presentModes.resize(presentModeCount);
-		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data());
+		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surfaceManager.GetSurface(), &presentModeCount, details.presentModes.data());
 	}
 
 
@@ -314,7 +311,7 @@ CloneCraftApp::QueueFamilyIndices CloneCraftApp::findQueueFamilies(VkPhysicalDev
 		}
 
 		VkBool32 presentSupport = false;
-		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surfaceManager.GetSurface(), &presentSupport);
 
 		if (presentSupport) {
 			indices.presentFamily = i;
@@ -328,12 +325,6 @@ CloneCraftApp::QueueFamilyIndices CloneCraftApp::findQueueFamilies(VkPhysicalDev
 	}
 
 	return indices;
-}
-
-void CloneCraftApp::createSurface() {
-	if (glfwCreateWindowSurface(instanceManager.GetInstance(), windowManager.GetWindow(), nullptr, &surface) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create window surface!");
-	}
 }
 
 void CloneCraftApp::createSwapChain() {
@@ -351,7 +342,7 @@ void CloneCraftApp::createSwapChain() {
 
 	VkSwapchainCreateInfoKHR createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-	createInfo.surface = surface;
+	createInfo.surface = surfaceManager.GetSurface();
 
 	createInfo.minImageCount = imageCount;
 	createInfo.imageFormat = surfaceFormat.format;

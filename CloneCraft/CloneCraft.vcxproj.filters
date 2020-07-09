@@ -39,6 +39,9 @@
     <ClCompile Include="CloneCraftApp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="VKSurfaceManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\compile.bat">
@@ -86,6 +89,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="GlobalHelperFunctions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VKSurfaceManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
