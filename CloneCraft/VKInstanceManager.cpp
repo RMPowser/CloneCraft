@@ -39,7 +39,7 @@ void VKInstanceManager::CreateVKInstance() {
 		createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
 		createInfo.ppEnabledLayerNames = validationLayers.data();
 
-		HelperFunctions::populateDebugMessengerCreateInfo(debugCreateInfo);
+		GlobalHelperFunctions::populateDebugMessengerCreateInfo(debugCreateInfo);
 		createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
 	} else {
 		createInfo.enabledLayerCount = 0;

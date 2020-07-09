@@ -1,6 +1,6 @@
 #pragma once
 #include "GLFW/glfw3.h"
-#include "HelperFunctions.h"
+#include "GlobalHelperFunctions.h"
 #include <iostream>
 #include <vector>
 

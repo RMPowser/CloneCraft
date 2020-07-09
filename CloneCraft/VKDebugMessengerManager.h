@@ -1,6 +1,5 @@
 #pragma once
 #include "VKInstanceManager.h"
-#include "HelperFunctions.h"
 
 class VKDebugMessengerManager {
 public:

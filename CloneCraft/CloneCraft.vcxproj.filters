@@ -36,6 +36,9 @@
     <ClCompile Include="VKDebugMessengerManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="CloneCraftApp.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\compile.bat">
@@ -82,7 +85,7 @@
     <ClInclude Include="VKDebugMessengerManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="HelperFunctions.h">
+    <ClInclude Include="GlobalHelperFunctions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

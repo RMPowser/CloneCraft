@@ -15,7 +15,7 @@ void VKDebugMessengerManager::SetupDebugMessenger() {
 	if (!instanceManagerPointer->isValidationLayersEnabled()) return;
 
 	VkDebugUtilsMessengerCreateInfoEXT createInfo;
-	HelperFunctions::populateDebugMessengerCreateInfo(createInfo);
+	GlobalHelperFunctions::populateDebugMessengerCreateInfo(createInfo);
 
 	if (CreateDebugUtilsMessengerEXT(instanceManagerPointer->GetInstance(), &createInfo, nullptr, &debugMessenger) != VK_SUCCESS) {
 		throw std::runtime_error("failed to set up debug messenger!");

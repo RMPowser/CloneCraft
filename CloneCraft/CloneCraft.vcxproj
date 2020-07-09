@@ -171,6 +171,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="CloneCraftApp.cpp" />
     <ClCompile Include="Frustum.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MatrixFunctions.cpp" />
@@ -191,7 +192,7 @@
     <ClInclude Include="Entity.h" />
     <ClInclude Include="Frustum.h" />
     <ClInclude Include="glm.h" />
-    <ClInclude Include="HelperFunctions.h" />
+    <ClInclude Include="GlobalHelperFunctions.h" />
     <ClInclude Include="MatrixFunctions.h" />
     <ClInclude Include="VKDebugMessengerManager.h" />
     <ClInclude Include="VKInstanceManager.h" />
