@@ -1,7 +1,8 @@
 #include "VKInstanceManager.h"
 
 
-VKInstanceManager::VKInstanceManager() {
+VKInstanceManager::VKInstanceManager(std::vector<const char*> _validationLayers) {
+	validationLayers = _validationLayers;
 }
 
 VKInstanceManager::~VKInstanceManager() {
@@ -39,7 +40,7 @@ void VKInstanceManager::CreateVKInstance() {
 		createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
 		createInfo.ppEnabledLayerNames = validationLayers.data();
 
-		GlobalHelperFunctions::populateDebugMessengerCreateInfo(debugCreateInfo);
+		GlobalHelpers::populateDebugMessengerCreateInfo(debugCreateInfo);
 		createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
 	} else {
 		createInfo.enabledLayerCount = 0;
@@ -57,7 +58,7 @@ void VKInstanceManager::CreateVKInstance() {
 	}
 }
 
-VkInstance VKInstanceManager::GetInstance() {
+VkInstance& VKInstanceManager::GetInstance() {
 	return instance;
 }
 
@@ -72,22 +73,22 @@ bool VKInstanceManager::checkValidationLayerSupport() {
 	std::vector<VkLayerProperties> availableLayers(layerCount);
 	vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
 
+	int layersFound = 0;
 	for (const char* layerName : validationLayers) {
 		std::cout << "searching for: " << layerName << "\n";
-		bool layerFound = false;
-
+		
 		for (const auto& layerProperties : availableLayers) {
 			std::cout << "\t" << layerProperties.layerName << "\n";
 			if (strcmp(layerName, layerProperties.layerName) == 0) {
-				layerFound = true;
+				layersFound++;
 				std::cout << "\t" << "layer found :D" << "\n";
 				break;
 			}
 		}
+	}
 
-		if (!layerFound) {
-			return false;
-		}
+	if (layersFound != validationLayers.size()) {
+		return false;
 	}
 
 	return true;

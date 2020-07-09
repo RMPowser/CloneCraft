@@ -3,6 +3,7 @@
 #include "VKInstanceManager.h"
 #include "VKDebugMessengerManager.h"
 #include "VKSurfaceManager.h"
+#include "VKDeviceManager.h"
 #include "Camera.h"
 #include "glm.h"
 #include <chrono>
@@ -89,23 +90,12 @@ private:
 	const std::string MODEL_PATH = "models/viking_room.obj";
 	const std::string TEXTURE_PATH = "textures/viking_room.png";
 
-	const std::vector<const char*> validationLayers = { "VK_LAYER_KHRONOS_validation" };
+	const std::vector<const char*> validationLayers = { "VK_LAYER_KHRONOS_validation", "VK_LAYER_LUNARG_monitor" };
 	const std::vector<const char*> deviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
-	struct QueueFamilyIndices {
-		std::optional<uint32_t> graphicsFamily;
-		std::optional<uint32_t> presentFamily;
 
-		bool isComplete() {
-			return graphicsFamily.has_value();
-		}
-	};
 
-	struct SwapChainSupportDetails {
-		VkSurfaceCapabilitiesKHR capabilities;
-		std::vector<VkSurfaceFormatKHR> formats;
-		std::vector<VkPresentModeKHR> presentModes;
-	};
+
 
 	struct UniformBufferObject {
 		alignas(16) glm::mat4 model;
@@ -119,10 +109,8 @@ private:
 	VKInstanceManager instanceManager;
 	VKDebugMessengerManager debugMessengerManager;
 	VKSurfaceManager surfaceManager;
-	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-	VkDevice device;
-	VkQueue graphicsQueue;
-	VkQueue presentQueue;
+	VKDeviceManager deviceManager;
+
 	VkSwapchainKHR swapChain;
 	std::vector<VkImage> swapChainImages;
 	VkFormat swapChainImageFormat;
@@ -164,16 +152,8 @@ private:
 	const Camera& getCamera();
 	void initVulkan();
 	void mainLoop();
-	void cleanup();
 	void loadModel();
-	std::vector<const char*> getRequiredExtensions();
-	bool checkValidationLayerSupport();
-	void pickPhysicalDevice();
-	void createLogicalDevice();
-	bool isDeviceSuitable(VkPhysicalDevice device);
-	bool checkDeviceExtensionSupport(VkPhysicalDevice device);
-	SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
-	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
+	
 	void createSwapChain();
 	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
 	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);

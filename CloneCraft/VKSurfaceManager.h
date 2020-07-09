@@ -5,12 +5,13 @@
 
 class VKSurfaceManager {
 public:
-	VKSurfaceManager(VKInstanceManager& instance);
+	VKSurfaceManager(VKInstanceManager& instance, WindowManager& windowManager);
 	~VKSurfaceManager();
-	void createSurface(VKInstanceManager& instanceManager, WindowManager& windowManager);
+	void createSurface();
 	VkSurfaceKHR& GetSurface();
 
 private:
 	VkSurfaceKHR surface;
+	WindowManager* windowManagerPointer;
 	VKInstanceManager* instanceManagerPointer;
 };

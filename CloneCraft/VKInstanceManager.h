@@ -1,15 +1,15 @@
 #pragma once
 #include "GLFW/glfw3.h"
-#include "GlobalHelperFunctions.h"
+#include "GlobalHelpers.h"
 #include <iostream>
 #include <vector>
 
 class VKInstanceManager {
 public:
-	VKInstanceManager();
+	VKInstanceManager(std::vector<const char*> _validationLayers);
 	~VKInstanceManager();
 	void CreateVKInstance();
-	VkInstance GetInstance();
+	VkInstance& GetInstance();
 	bool isValidationLayersEnabled();
 
 private:
@@ -19,7 +19,7 @@ private:
 	const bool enableValidationLayers = true;
 #endif
 	VkInstance instance;
-	const std::vector<const char*> validationLayers = { "VK_LAYER_KHRONOS_validation" };
+	std::vector<const char*> validationLayers;
 	bool checkValidationLayerSupport();
 	std::vector<const char*> getRequiredExtensions();
 };

@@ -176,6 +176,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MatrixFunctions.cpp" />
     <ClCompile Include="VKDebugMessengerManager.cpp" />
+    <ClCompile Include="VKDeviceManager.cpp" />
     <ClCompile Include="VKInstanceManager.cpp" />
     <ClCompile Include="VKSurfaceManager.cpp" />
     <ClCompile Include="WindowManager.cpp" />
@@ -193,9 +194,10 @@
     <ClInclude Include="Entity.h" />
     <ClInclude Include="Frustum.h" />
     <ClInclude Include="glm.h" />
-    <ClInclude Include="GlobalHelperFunctions.h" />
+    <ClInclude Include="GlobalHelpers.h" />
     <ClInclude Include="MatrixFunctions.h" />
     <ClInclude Include="VKDebugMessengerManager.h" />
+    <ClInclude Include="VKDeviceManager.h" />
     <ClInclude Include="VKInstanceManager.h" />
     <ClInclude Include="VKSurfaceManager.h" />
     <ClInclude Include="WindowManager.h" />

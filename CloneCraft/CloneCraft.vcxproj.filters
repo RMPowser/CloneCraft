@@ -42,6 +42,9 @@
     <ClCompile Include="VKSurfaceManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="VKDeviceManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\compile.bat">
@@ -88,10 +91,13 @@
     <ClInclude Include="VKDebugMessengerManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="GlobalHelperFunctions.h">
+    <ClInclude Include="VKSurfaceManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="VKSurfaceManager.h">
+    <ClInclude Include="VKDeviceManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GlobalHelpers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
