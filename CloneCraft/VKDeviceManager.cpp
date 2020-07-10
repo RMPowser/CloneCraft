@@ -11,7 +11,7 @@ VKDeviceManager::~VKDeviceManager() {
 	vkDestroyDevice(logicalDevice, nullptr);
 }
 
-void VKDeviceManager::pickPhysicalDevice() {
+void VKDeviceManager::PickPhysicalDevice() {
 	uint32_t deviceCount = 0;
 	vkEnumeratePhysicalDevices(instanceManagerPointer->GetInstance(), &deviceCount, nullptr);
 
@@ -37,7 +37,7 @@ void VKDeviceManager::pickPhysicalDevice() {
 	}
 }
 
-void VKDeviceManager::createLogicalDevice() {
+void VKDeviceManager::CreateLogicalDevice() {
 	GlobalHelpers::QueueFamilyIndices indices = GlobalHelpers::findQueueFamilies(physicalDevice, surfaceManagerPointer->GetSurface());
 
 	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
@@ -93,6 +93,10 @@ VkQueue& VKDeviceManager::GetGraphicsQueue() {
 
 VkQueue& VKDeviceManager::GetPresentQueue() {
 	return presentQueue;
+}
+
+VkDeviceMemory& VKDeviceManager::GetDeviceMemory() {
+	return deviceMemory;
 }
 
 bool VKDeviceManager::isDeviceSuitable(VkPhysicalDevice device) {

@@ -10,7 +10,7 @@ VKSurfaceManager::~VKSurfaceManager() {
 	vkDestroySurfaceKHR(instanceManagerPointer->GetInstance(), surface, nullptr);
 }
 
-void VKSurfaceManager::createSurface() {
+void VKSurfaceManager::CreateSurface() {
 	if (glfwCreateWindowSurface(instanceManagerPointer->GetInstance(), windowManagerPointer->GetWindow(), nullptr, &surface) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create window surface!");
 	}

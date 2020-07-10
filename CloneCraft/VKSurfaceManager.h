@@ -7,7 +7,7 @@ class VKSurfaceManager {
 public:
 	VKSurfaceManager(VKInstanceManager& instance, WindowManager& windowManager);
 	~VKSurfaceManager();
-	void createSurface();
+	void CreateSurface();
 	VkSurfaceKHR& GetSurface();
 
 private:

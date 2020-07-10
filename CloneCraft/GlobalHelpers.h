@@ -1,8 +1,11 @@
 #pragma once
 #include "vulkan/vulkan.h"
+#include "glm.h"
+#include <fstream>
 #include <iostream>
 #include <optional>
 #include <vector>
+#include <array>
 
 class GlobalHelpers {
 public:
@@ -91,4 +94,32 @@ public:
 
 		return indices;
 	}
+
+	static std::vector<char> readFile(const std::string& filename) {
+		std::ifstream file(filename, std::ios::ate | std::ios::binary); // ate: start reading at the end of the file. binary: read the file as binary (avoid text transformations)
+
+		if (!file.is_open()) {
+			throw std::runtime_error("failed to open file: " + filename);
+		}
+
+		// start reading at the end of the file so that we can use the read position to determine the size of the file and allocate a buffer
+		size_t fileSize = (size_t)file.tellg();
+		std::vector<char> buffer(fileSize);
+
+		// now, seek back to the beginning of the file and read all of the bytes at once
+		file.seekg(0);
+		file.read(buffer.data(), fileSize);
+
+
+		file.close(); // don't forget to close the file dumbass!
+		return buffer;
+	}
+
+	
+
+	struct UniformBufferObject {
+		alignas(16) glm::mat4 model;
+		alignas(16) glm::mat4 view;
+		alignas(16) glm::mat4 proj;
+	};
 };

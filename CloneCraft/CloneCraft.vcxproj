@@ -175,6 +175,8 @@
     <ClCompile Include="Frustum.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MatrixFunctions.cpp" />
+    <ClCompile Include="Vertex.cpp" />
+    <ClCompile Include="VKGraphicsManager.cpp" />
     <ClCompile Include="VKDebugMessengerManager.cpp" />
     <ClCompile Include="VKDeviceManager.cpp" />
     <ClCompile Include="VKInstanceManager.cpp" />
@@ -196,6 +198,8 @@
     <ClInclude Include="glm.h" />
     <ClInclude Include="GlobalHelpers.h" />
     <ClInclude Include="MatrixFunctions.h" />
+    <ClInclude Include="Vertex.h" />
+    <ClInclude Include="VKGraphicsManager.h" />
     <ClInclude Include="VKDebugMessengerManager.h" />
     <ClInclude Include="VKDeviceManager.h" />
     <ClInclude Include="VKInstanceManager.h" />
