@@ -1,17 +1,17 @@
-#include "VKDeviceManager.h"
+#include "DeviceManager.h"
 
-VKDeviceManager::VKDeviceManager(VKInstanceManager& instanceManager, VKSurfaceManager& surfaceManager, std::vector<const char*> _deviceExtensions, std::vector<const char*> _validationLayers) {
+DeviceManager::DeviceManager(InstanceManager& instanceManager, SurfaceManager& surfaceManager, std::vector<const char*> _deviceExtensions, std::vector<const char*> _validationLayers) {
 	instanceManagerPointer = &instanceManager;
 	surfaceManagerPointer = &surfaceManager;
 	deviceExtensions = _deviceExtensions;
 	validationLayers = _validationLayers;
 }
 
-VKDeviceManager::~VKDeviceManager() {
+DeviceManager::~DeviceManager() {
 	vkDestroyDevice(logicalDevice, nullptr);
 }
 
-void VKDeviceManager::PickPhysicalDevice() {
+void DeviceManager::PickPhysicalDevice() {
 	uint32_t deviceCount = 0;
 	vkEnumeratePhysicalDevices(instanceManagerPointer->GetInstance(), &deviceCount, nullptr);
 
@@ -37,7 +37,7 @@ void VKDeviceManager::PickPhysicalDevice() {
 	}
 }
 
-void VKDeviceManager::CreateLogicalDevice() {
+void DeviceManager::CreateLogicalDevice() {
 	GlobalHelpers::QueueFamilyIndices indices = GlobalHelpers::findQueueFamilies(physicalDevice, surfaceManagerPointer->GetSurface());
 
 	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
@@ -79,27 +79,27 @@ void VKDeviceManager::CreateLogicalDevice() {
 	vkGetDeviceQueue(logicalDevice, indices.presentFamily.value(), 0, &presentQueue);
 }
 
-VkDevice& VKDeviceManager::GetLogicalDevice() {
+VkDevice& DeviceManager::GetLogicalDevice() {
 	return logicalDevice;
 }
 
-VkPhysicalDevice& VKDeviceManager::GetPhysicalDevice() {
+VkPhysicalDevice& DeviceManager::GetPhysicalDevice() {
 	return physicalDevice;
 }
 
-VkQueue& VKDeviceManager::GetGraphicsQueue() {
+VkQueue& DeviceManager::GetGraphicsQueue() {
 	return graphicsQueue;
 }
 
-VkQueue& VKDeviceManager::GetPresentQueue() {
+VkQueue& DeviceManager::GetPresentQueue() {
 	return presentQueue;
 }
 
-VkDeviceMemory& VKDeviceManager::GetDeviceMemory() {
+VkDeviceMemory& DeviceManager::GetDeviceMemory() {
 	return deviceMemory;
 }
 
-bool VKDeviceManager::isDeviceSuitable(VkPhysicalDevice device) {
+bool DeviceManager::isDeviceSuitable(VkPhysicalDevice device) {
 	GlobalHelpers::QueueFamilyIndices indices = GlobalHelpers::findQueueFamilies(device, surfaceManagerPointer->GetSurface());
 
 	bool extensionsSupported = checkDeviceExtensionSupport(device);
@@ -116,7 +116,7 @@ bool VKDeviceManager::isDeviceSuitable(VkPhysicalDevice device) {
 	return indices.isComplete() && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy;
 }
 
-bool VKDeviceManager::checkDeviceExtensionSupport(VkPhysicalDevice device) {
+bool DeviceManager::checkDeviceExtensionSupport(VkPhysicalDevice device) {
 	uint32_t extensionCount;
 	vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
 

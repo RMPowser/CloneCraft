@@ -7,9 +7,10 @@ public:
 	WindowManager();
 	~WindowManager();
 	void CreateWindow(uint32_t WINDOW_WIDTH, uint32_t WINDOW_HEIGHT, const char* WINDOW_TITLE);
-	GLFWwindow* GetWindow();
-	bool isFramebufferResized();
-	void SetFramebufferResized(bool value);
+
+	GLFWwindow*		GetWindow()							{ return window; }
+	bool			isFramebufferResized()				{ return framebufferResized; }
+	void			SetFramebufferResized(bool value)	{ framebufferResized = value; }
 
 private:
 	GLFWwindow* window;

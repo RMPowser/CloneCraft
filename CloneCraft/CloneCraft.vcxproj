@@ -171,16 +171,23 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="BufferManager.cpp" />
     <ClCompile Include="CloneCraftApp.cpp" />
+    <ClCompile Include="DescriptorManager.cpp" />
     <ClCompile Include="Frustum.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MatrixFunctions.cpp" />
-    <ClCompile Include="Vertex.cpp" />
-    <ClCompile Include="VKGraphicsManager.cpp" />
-    <ClCompile Include="VKDebugMessengerManager.cpp" />
-    <ClCompile Include="VKDeviceManager.cpp" />
-    <ClCompile Include="VKInstanceManager.cpp" />
-    <ClCompile Include="VKSurfaceManager.cpp" />
+    <ClCompile Include="MemoryManager.cpp" />
+    <ClCompile Include="PipelineManager.cpp" />
+    <ClCompile Include="ShaderManager.cpp" />
+    <ClCompile Include="SwapchainManager.cpp" />
+    <ClCompile Include="RenderManager.cpp" />
+    <ClCompile Include="DebugMessengerManager.cpp" />
+    <ClCompile Include="DeviceManager.cpp" />
+    <ClCompile Include="InstanceManager.cpp" />
+    <ClCompile Include="SurfaceManager.cpp" />
+    <ClCompile Include="SyncManager.cpp" />
+    <ClCompile Include="TextureManager.cpp" />
     <ClCompile Include="WindowManager.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -191,19 +198,27 @@
     <None Include="Shaders\vert.spv" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BufferManager.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="CloneCraftApp.h" />
+    <ClInclude Include="DescriptorManager.h" />
     <ClInclude Include="Entity.h" />
     <ClInclude Include="Frustum.h" />
     <ClInclude Include="glm.h" />
     <ClInclude Include="GlobalHelpers.h" />
     <ClInclude Include="MatrixFunctions.h" />
+    <ClInclude Include="MemoryManager.h" />
+    <ClInclude Include="PipelineManager.h" />
+    <ClInclude Include="ShaderManager.h" />
+    <ClInclude Include="SwapchainManager.h" />
+    <ClInclude Include="SyncManager.h" />
+    <ClInclude Include="TextureManager.h" />
     <ClInclude Include="Vertex.h" />
-    <ClInclude Include="VKGraphicsManager.h" />
-    <ClInclude Include="VKDebugMessengerManager.h" />
-    <ClInclude Include="VKDeviceManager.h" />
-    <ClInclude Include="VKInstanceManager.h" />
-    <ClInclude Include="VKSurfaceManager.h" />
+    <ClInclude Include="RenderManager.h" />
+    <ClInclude Include="DebugMessengerManager.h" />
+    <ClInclude Include="DeviceManager.h" />
+    <ClInclude Include="InstanceManager.h" />
+    <ClInclude Include="SurfaceManager.h" />
     <ClInclude Include="WindowManager.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

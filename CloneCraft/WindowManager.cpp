@@ -18,18 +18,6 @@ void WindowManager::CreateWindow(uint32_t WINDOW_WIDTH, uint32_t WINDOW_HEIGHT, 
 	};
 }
 
-GLFWwindow* WindowManager::GetWindow() {
-	return window;
-}
-
-bool WindowManager::isFramebufferResized() {
-	return framebufferResized;
-}
-
-void WindowManager::SetFramebufferResized(bool value) {
-	framebufferResized = value;
-}
-
 void WindowManager::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
 	auto windowManager = reinterpret_cast<WindowManager*>(glfwGetWindowUserPointer(window));
 	windowManager->framebufferResized = true;

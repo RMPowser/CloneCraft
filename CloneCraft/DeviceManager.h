@@ -1,12 +1,13 @@
 #pragma once
-#include "VKInstanceManager.h"
-#include "VKSurfaceManager.h"
+#include "vulkan/vulkan.h"
+#include "SurfaceManager.h"
+#include "InstanceManager.h"
 #include <set>
 
-class VKDeviceManager {
+class DeviceManager {
 public:
-	VKDeviceManager(VKInstanceManager& instanceManager, VKSurfaceManager& surfaceManager, const std::vector<const char*> deviceExtensions, const std::vector<const char*> requiredValidationLayers);
-	~VKDeviceManager();
+	DeviceManager(InstanceManager& instanceManager, SurfaceManager& surfaceManager, const std::vector<const char*> deviceExtensions, const std::vector<const char*> requiredValidationLayers);
+	~DeviceManager();
 	void PickPhysicalDevice();
 	void CreateLogicalDevice();
 	VkDevice& GetLogicalDevice();
@@ -22,10 +23,12 @@ private:
 	VkDeviceMemory deviceMemory;
 	VkQueue graphicsQueue;
 	VkQueue presentQueue;
-	VKSurfaceManager* surfaceManagerPointer = nullptr;
-	VKInstanceManager* instanceManagerPointer = nullptr;
+
+	SurfaceManager* surfaceManagerPointer = nullptr;
+	InstanceManager* instanceManagerPointer = nullptr;
 	std::vector<const char*> deviceExtensions;
 	std::vector<const char*> validationLayers;
+
 	bool checkDeviceExtensionSupport(VkPhysicalDevice device);
 };
 

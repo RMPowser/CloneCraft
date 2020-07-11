@@ -1,3 +1,4 @@
+#pragma once
 #include "Entity.h"
 #include "MatrixFunctions.h"
 #include "Frustum.h"

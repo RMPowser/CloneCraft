@@ -1,21 +1,21 @@
-#include "VKSurfaceManager.h"
+#include "SurfaceManager.h"
 
 
-VKSurfaceManager::VKSurfaceManager(VKInstanceManager& instance, WindowManager& windowManager) {
+SurfaceManager::SurfaceManager(InstanceManager& instance, WindowManager& windowManager) {
 	instanceManagerPointer = &instance;
 	windowManagerPointer = &windowManager;
 }
 
-VKSurfaceManager::~VKSurfaceManager() {
+SurfaceManager::~SurfaceManager() {
 	vkDestroySurfaceKHR(instanceManagerPointer->GetInstance(), surface, nullptr);
 }
 
-void VKSurfaceManager::CreateSurface() {
+void SurfaceManager::CreateSurface() {
 	if (glfwCreateWindowSurface(instanceManagerPointer->GetInstance(), windowManagerPointer->GetWindow(), nullptr, &surface) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create window surface!");
 	}
 }
 
-VkSurfaceKHR& VKSurfaceManager::GetSurface() {
+VkSurfaceKHR& SurfaceManager::GetSurface() {
 	return surface;
 }

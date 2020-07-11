@@ -1,15 +1,18 @@
 #pragma once
-#include "VKInstanceManager.h"
+#include "vulkan/vulkan.h"
+#include "InstanceManager.h"
 
-class VKDebugMessengerManager {
+class DebugMessengerManager {
 public:
-	VKDebugMessengerManager(VKInstanceManager& instanceManager);
-	~VKDebugMessengerManager();
+	DebugMessengerManager(InstanceManager& instanceManager);
+	~DebugMessengerManager();
 	void SetupDebugMessenger();
 
 private:
 	VkDebugUtilsMessengerEXT debugMessenger;
-	VKInstanceManager* instanceManagerPointer = nullptr;
+
+	InstanceManager* instanceManagerPointer;
+
 	VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
 	void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
 };

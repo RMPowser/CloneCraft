@@ -4,10 +4,10 @@
 #include <iostream>
 #include <vector>
 
-class VKInstanceManager {
+class InstanceManager {
 public:
-	VKInstanceManager(std::vector<const char*> _validationLayers);
-	~VKInstanceManager();
+	InstanceManager(std::vector<const char*> _validationLayers);
+	~InstanceManager();
 	void CreateVKInstance();
 	VkInstance& GetInstance();
 	bool isValidationLayersEnabled();
@@ -19,7 +19,9 @@ private:
 	const bool enableValidationLayers = true;
 #endif
 	VkInstance instance;
+
 	std::vector<const char*> validationLayers;
+
 	bool checkValidationLayerSupport();
 	std::vector<const char*> getRequiredExtensions();
 };

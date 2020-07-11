@@ -1,10 +1,18 @@
 #pragma once
 #include "WindowManager.h"
-#include "VKInstanceManager.h"
-#include "VKDebugMessengerManager.h"
-#include "VKSurfaceManager.h"
-#include "VKDeviceManager.h"
-#include "VKGraphicsManager.h"
+#include "InstanceManager.h"
+#include "DebugMessengerManager.h"
+#include "SurfaceManager.h"
+#include "DeviceManager.h"
+#include "SwapchainManager.h"
+#include "RenderManager.h"
+#include "PipelineManager.h"
+#include "TextureManager.h"
+#include "MemoryManager.h"
+#include "BufferManager.h"
+#include "SyncManager.h"
+#include "DescriptorManager.h"
+#include "ShaderManager.h"
 #include "Camera.h"
 
 class CloneCraftApp {
@@ -25,11 +33,19 @@ private:
 	const std::vector<const char*> deviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
 	WindowManager windowManager;
-	VKInstanceManager instanceManager;
-	VKDebugMessengerManager debugMessengerManager;
-	VKSurfaceManager surfaceManager;
-	VKDeviceManager deviceManager;
-	VKGraphicsManager graphicsManager;
+	InstanceManager instanceManager;
+	DebugMessengerManager debugMessengerManager;
+	SurfaceManager surfaceManager;
+	DeviceManager deviceManager;
+	SwapchainManager swapchainManager;
+	RenderManager renderManager;
+	PipelineManager pipelineManager;
+	TextureManager textureManager;
+	MemoryManager memoryManager;
+	BufferManager bufferManager;
+	SyncManager syncManager;
+	DescriptorManager descriptorManager;
+	ShaderManager shaderManager;
 	const Camera camera;
 
 	const Camera& getCamera();

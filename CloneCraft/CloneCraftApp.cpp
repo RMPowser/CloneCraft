@@ -5,7 +5,15 @@ CloneCraftApp::CloneCraftApp() :
 	debugMessengerManager(instanceManager), 
 	surfaceManager(instanceManager, windowManager), 
 	deviceManager(instanceManager, surfaceManager, deviceExtensions, validationLayers),
-	graphicsManager(deviceManager, surfaceManager, windowManager, MAX_FRAMES_IN_FLIGHT)
+	renderManager(deviceManager, swapchainManager, syncManager, bufferManager, windowManager, textureManager, surfaceManager),
+	pipelineManager(deviceManager, swapchainManager, shaderManager, descriptorManager, renderManager),
+	textureManager(deviceManager, swapchainManager, memoryManager, bufferManager, syncManager),
+	memoryManager(deviceManager),
+	swapchainManager(deviceManager, surfaceManager, windowManager, textureManager, memoryManager, pipelineManager, bufferManager, renderManager, descriptorManager),
+	bufferManager(textureManager, swapchainManager, deviceManager, memoryManager, pipelineManager, renderManager, descriptorManager, syncManager),
+	syncManager(deviceManager, textureManager, renderManager, MAX_FRAMES_IN_FLIGHT),
+	descriptorManager(deviceManager, textureManager, bufferManager),
+	shaderManager(deviceManager)
 {}
 
 CloneCraftApp::~CloneCraftApp() {
@@ -27,25 +35,25 @@ void CloneCraftApp::initVulkan() {
 	surfaceManager.CreateSurface();
 	deviceManager.PickPhysicalDevice();
 	deviceManager.CreateLogicalDevice();
-	graphicsManager.CreateSwapChain();
-	graphicsManager.createImageViews();
-	graphicsManager.createRenderPass();
-	graphicsManager.createDescriptorSetLayout();
-	graphicsManager.createGraphicsPipeline();
-	graphicsManager.createDepthResources();
-	graphicsManager.createFrameBuffers();
-	graphicsManager.createCommandPool();
-	graphicsManager.createTextureImage(TEXTURE_PATH);
-	graphicsManager.createTextureImageView();
-	graphicsManager.createTextureSampler();
-	graphicsManager.LoadModel(MODEL_PATH);
-	graphicsManager.createVertexBuffer();
-	graphicsManager.createIndexBuffer();
-	graphicsManager.createUniformBuffers();
-	graphicsManager.createDescriptorPool();
-	graphicsManager.createDescriptorSets();
-	graphicsManager.createCommandBuffers();
-	graphicsManager.createSyncObjects();
+	swapchainManager.createSwapChain();
+	textureManager.createImageViews();
+	renderManager.createRenderPass();
+	descriptorManager.createDescriptorSetLayout();
+	pipelineManager.createGraphicsPipeline();
+	textureManager.createDepthResources();
+	bufferManager.createFrameBuffers();
+	renderManager.createCommandPool();
+	textureManager.createTextureImage(TEXTURE_PATH);
+	textureManager.createTextureImageView();
+	textureManager.createTextureSampler();
+	renderManager.LoadModel(MODEL_PATH);
+	bufferManager.createVertexBuffer();
+	bufferManager.createIndexBuffer();
+	bufferManager.createUniformBuffers();
+	descriptorManager.createDescriptorPool();
+	descriptorManager.createDescriptorSets();
+	bufferManager.createCommandBuffers();
+	syncManager.createSyncObjects();
 }
 
 void CloneCraftApp::mainLoop() {
@@ -58,5 +66,5 @@ void CloneCraftApp::mainLoop() {
 }
 
 void CloneCraftApp::drawFrame() {
-	graphicsManager.drawFrame();
+	renderManager.drawFrame();
 }

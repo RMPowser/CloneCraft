@@ -1,17 +1,18 @@
 #pragma once
 #include "vulkan/vulkan.h"
-#include "VKInstanceManager.h"
 #include "WindowManager.h"
+#include "InstanceManager.h"
 
-class VKSurfaceManager {
+class SurfaceManager {
 public:
-	VKSurfaceManager(VKInstanceManager& instance, WindowManager& windowManager);
-	~VKSurfaceManager();
+	SurfaceManager(InstanceManager& instance, WindowManager& windowManager);
+	~SurfaceManager();
 	void CreateSurface();
 	VkSurfaceKHR& GetSurface();
 
 private:
 	VkSurfaceKHR surface;
+
 	WindowManager* windowManagerPointer;
-	VKInstanceManager* instanceManagerPointer;
+	InstanceManager* instanceManagerPointer;
 };

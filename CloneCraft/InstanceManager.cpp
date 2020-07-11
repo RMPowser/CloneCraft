@@ -1,15 +1,15 @@
-#include "VKInstanceManager.h"
+#include "InstanceManager.h"
 
 
-VKInstanceManager::VKInstanceManager(std::vector<const char*> _validationLayers) {
+InstanceManager::InstanceManager(std::vector<const char*> _validationLayers) {
 	validationLayers = _validationLayers;
 }
 
-VKInstanceManager::~VKInstanceManager() {
+InstanceManager::~InstanceManager() {
 	vkDestroyInstance(instance, nullptr);
 }
 
-void VKInstanceManager::CreateVKInstance() {
+void InstanceManager::CreateVKInstance() {
 	try {
 		if (enableValidationLayers && !checkValidationLayerSupport()) {
 			throw std::runtime_error("validation layers requested, but not available!\n");
@@ -58,15 +58,15 @@ void VKInstanceManager::CreateVKInstance() {
 	}
 }
 
-VkInstance& VKInstanceManager::GetInstance() {
+VkInstance& InstanceManager::GetInstance() {
 	return instance;
 }
 
-bool VKInstanceManager::isValidationLayersEnabled() {
+bool InstanceManager::isValidationLayersEnabled() {
 	return enableValidationLayers;
 }
 
-bool VKInstanceManager::checkValidationLayerSupport() {
+bool InstanceManager::checkValidationLayerSupport() {
 	uint32_t layerCount;
 	vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
 
@@ -94,7 +94,7 @@ bool VKInstanceManager::checkValidationLayerSupport() {
 	return true;
 }
 
-std::vector<const char*> VKInstanceManager::getRequiredExtensions() {
+std::vector<const char*> InstanceManager::getRequiredExtensions() {
 	uint32_t glfwExtensionCount = 0;
 	const char** glfwExtensions;
 	glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
