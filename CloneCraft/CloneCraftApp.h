@@ -1,8 +1,12 @@
 #pragma once
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
-
+#include "MatrixFunctions.h"
+#include "AppConfig.h"
+#include "Camera.h"
+#include "Player.h"
 #include "glm.h"
+
 
 #define STB_IMAGE_IMPLEMENTATION // The header only defines the prototypes of the functions by default. One code file needs to include the header with the STB_IMAGE_IMPLEMENTATION definition to include the function bodies, otherwise we'll get linking errors.
 #include <stb_image.h>
@@ -13,7 +17,6 @@
 // The chrono standard library header exposes functions to do precise timekeeping. We'll use this to make sure that the geometry
 // rotates 90 degrees per second regardless of frame rate.
 #include <chrono>
-
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
@@ -27,25 +30,29 @@
 #include <glm/glm.hpp>
 #include <array>
 #include <unordered_map>
-#include "Camera.h"
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/hash.hpp>
 
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // define globals
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-const uint32_t WINDOW_WIDTH = 800;
-const uint32_t WINDOW_HEIGHT = 600;
-const uint32_t FOV = 75;
-const char* WINDOW_TITLE = "CloneCraft   :^)";
-const uint32_t MAX_FRAMES_IN_FLIGHT = 2; // defines how many frames should be processed concurrently. must be non-zero and positive
 const std::string MODEL_PATH = "models/viking_room.obj";
 const std::string TEXTURE_PATH = "textures/viking_room.png";
+Player player;
+bool cameraMat4Updated = false;
+bool playerMat4Updated = false;
+bool firstMouse = true;
+float sensitivity = 0.1f;
 
-const std::vector<const char*> validationLayers = { "VK_LAYER_KHRONOS_validation" };
-
-const std::vector<const char*> deviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+bool forwardPressed = false;
+bool leftPressed = false;
+bool rightPressed = false;
+bool backPressed = false;
+bool upPressed = false;
+bool downPressed = false;
+float speed = 0.2f;
 
 struct QueueFamilyIndices {
 	std::optional<uint32_t> graphicsFamily;
@@ -89,6 +96,7 @@ struct Vertex {
 		attributeDescriptions[0].location = 0;
 		attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
 		attributeDescriptions[0].offset = offsetof(Vertex, pos);
+
 		attributeDescriptions[1].binding = 0;
 		attributeDescriptions[1].location = 1;
 		attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
@@ -117,14 +125,6 @@ namespace std {
 	};
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// check debug
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#ifdef NDEBUG
-const bool enableValidationLayers = false;
-#else
-const bool enableValidationLayers = true;
-#endif
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // creates the dubug messenger to be used by the validation layers by getting a function pointer
@@ -160,6 +160,22 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class CloneCraftApplication {
 public:
+	CloneCraftApplication(GLFWwindow* _window, AppConfig* _config) :
+		camera(*_config)
+	{
+		config = _config;
+		#ifdef NDEBUG
+		config->validationLayers = { "VK_LAYER_LUNARG_monitor" };
+		#else
+		config->validationLayers = { "VK_LAYER_KHRONOS_validation", "VK_LAYER_LUNARG_monitor" };
+		#endif
+		
+		camera.hookEntity(*p_player);
+		window = _window;
+		glfwSetWindowUserPointer(window, this);
+		glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+	}
+
 	void run() {
 		initWindow();
 		initVulkan();
@@ -168,6 +184,10 @@ public:
 	}
 
 private:
+	AppConfig* config;
+	Camera camera;
+	Player* p_player = &player;
+
 	GLFWwindow* window;
 	VkInstance instance;
 	VkDebugUtilsMessengerEXT debugMessenger;
@@ -212,23 +232,13 @@ private:
 	VkDeviceMemory depthImageMemory;
 	VkImageView depthImageView;
 
-	const Camera camera;
 
-	const Camera& getCamera() {
-		return camera;
-	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// create a window using glfw because vulkan cant create windows
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	void initWindow() {
-		glfwInit();
-
-		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-
-		window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE, nullptr, nullptr);
-		glfwSetWindowUserPointer(window, this);
-		glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+		
 	}
 
 	// The reason that we're creating a static function as a callback is because GLFW does not know how to properly call a member 
@@ -273,12 +283,140 @@ private:
 	// main loop
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	void mainLoop() {
+		static auto startTime = std::chrono::high_resolution_clock::now();
+
 		while (!glfwWindowShouldClose(window)) {
+			auto currentTime = std::chrono::high_resolution_clock::now();
+			float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+			startTime = std::chrono::high_resolution_clock::now();
+
+			update(time);
 			glfwPollEvents();
-			drawFrame();
+			drawFrame(time);
 		}
 
 		vkDeviceWaitIdle(device); // when exiting the loop, drawing and presentation operations may still be going on. Cleaning up resources while that is happening is a bad idea.
+	}
+
+	void update(float dt) {
+		auto acceleration = &(player.m_acceleration);
+		auto rotation = &(player.rotation);
+
+		if (forwardPressed) {
+			acceleration->x += -glm::cos(glm::radians(rotation->y + 90)) * speed;
+			acceleration->z += -glm::sin(glm::radians(rotation->y + 90)) * speed;
+		}
+		if (backPressed) {
+			acceleration->x += glm::cos(glm::radians(rotation->y + 90)) * speed;
+			acceleration->z += glm::sin(glm::radians(rotation->y + 90)) * speed;
+		}
+		if (leftPressed) {
+			acceleration->x += -glm::cos(glm::radians(rotation->y)) * speed;
+			acceleration->z += -glm::sin(glm::radians(rotation->y)) * speed;
+		}
+		if (rightPressed) {
+			acceleration->x += glm::cos(glm::radians(rotation->y)) * speed;
+			acceleration->z += glm::sin(glm::radians(rotation->y)) * speed;
+		}
+		if (upPressed) {
+			acceleration->y += speed;
+		}
+		if (downPressed) {
+			acceleration->y += -speed;
+		}
+
+		/*std::cout << "\nx: " << player.position.x << " y: " << player.position.y << " z: " << player.position.z;
+		std::cout << "\nspeed: " << speed;
+		std::cout << "\nacceleration x: " << acceleration->x << " y: " << acceleration->y << " z: " << acceleration->z;
+		std::cout << "\nvelocity x: " << player.velocity.x << " y: " << player.velocity.y << " z: " << player.velocity.z;
+		std::cout << "\ndt: " << dt;*/
+
+		player.update(dt);
+		camera.update();
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// Function will perform the following operations:
+	//
+	//		Acquire an image from the swap chain
+	//		Execute the command buffer with that image as attachment in the framebuffer
+	//		Return the image to the swap chain for presentation
+	//
+	// Each of these events is set in motion using a single function call, but they are executed asynchronously. The function calls 
+	// will return before the operations are actually finished and the order of execution is also undefined. Unfortunate, because 
+	// each of the operations depends on the previous one finishing. There are two ways of synchronizing swap chain events: fences 
+	// and semaphores. They're both objects that can be used for coordinating operations by having one operation signal and another 
+	// operation wait for a fence or semaphore to go from the unsignaled to signaled state. The difference is that the state of 
+	// fences can be accessed from your program using calls like vkWaitForFences and semaphores cannot be. Fences are mainly designed
+	// to synchronize your application itself with rendering operation, whereas semaphores are used to synchronize operations within
+	// or across command queues. We want to synchronize the queue operations of draw commands and presentation, which makes 
+	// semaphores the best fit.
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	void drawFrame(float dt) {
+		vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+
+		uint32_t imageIndex;
+		VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+
+		updateUniformBuffer(imageIndex, dt);
+
+		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+			recreateSwapChain();
+			return;
+		} else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+			throw std::runtime_error("failed to acquire swap chain image!");
+		}
+
+		// Check if a previous frame is using this image (i.e.there is its fence to wait on)
+		if (imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
+			vkWaitForFences(device, 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
+		}
+		// Mark the image as now being in use by this frame
+		imagesInFlight[imageIndex] = inFlightFences[currentFrame];
+
+		VkSubmitInfo submitInfo{};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+		VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
+		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = waitSemaphores;
+		submitInfo.pWaitDstStageMask = waitStages;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
+
+		VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = signalSemaphores;
+
+		vkResetFences(device, 1, &inFlightFences[currentFrame]);
+
+		if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
+			throw std::runtime_error("failed to submit draw command buffer!");
+		}
+
+		VkPresentInfoKHR presentInfo{};
+		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+		presentInfo.waitSemaphoreCount = 1;
+		presentInfo.pWaitSemaphores = signalSemaphores;
+
+		VkSwapchainKHR swapChains[] = { swapChain };
+		presentInfo.swapchainCount = 1;
+		presentInfo.pSwapchains = swapChains;
+		presentInfo.pImageIndices = &imageIndex;
+		presentInfo.pResults = nullptr; // Optional
+
+		result = vkQueuePresentKHR(presentQueue, &presentInfo);
+
+		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
+			framebufferResized = false;
+			recreateSwapChain();
+		} else if (result != VK_SUCCESS) {
+			throw std::runtime_error("failed to present swap chain image!");
+		}
+
+		// Increment the frame. By using the modulo(%) operator, we ensure that the frame index loops around after every MAX_FRAMES_IN_FLIGHT enqueued frames.
+		currentFrame = (currentFrame + 1) % config->maxFramesInFlight;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -301,7 +439,7 @@ private:
 		vkDestroyBuffer(device, vertexBuffer, nullptr);
 		vkFreeMemory(device, vertexBufferMemory, nullptr);
 
-		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		for (size_t i = 0; i < config->maxFramesInFlight; i++) {
 			vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
 			vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
 			vkDestroyFence(device, inFlightFences[i], nullptr);
@@ -311,9 +449,7 @@ private:
 
 		vkDestroyDevice(device, nullptr);
 
-		if (enableValidationLayers) {
-			DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
-		}
+		DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
 
 		vkDestroySurfaceKHR(instance, surface, nullptr);
 		vkDestroyInstance(instance, nullptr);
@@ -328,7 +464,7 @@ private:
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	void createInstance() {
 		try {
-			if (enableValidationLayers && !checkValidationLayerSupport()) {
+			if (!checkValidationLayerSupport()) {
 				throw std::runtime_error("validation layers requested, but not available!\n");
 			}
 		} catch (std::runtime_error& e) {
@@ -353,17 +489,12 @@ private:
 		createInfo.ppEnabledExtensionNames = extensions.data();
 
 		VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo;
-		if (enableValidationLayers) {
-			createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
-			createInfo.ppEnabledLayerNames = validationLayers.data();
+		createInfo.enabledLayerCount = static_cast<uint32_t>(config->validationLayers.size());
+		createInfo.ppEnabledLayerNames = config->validationLayers.data();
 
-			populateDebugMessengerCreateInfo(debugCreateInfo);
-			createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
-		} else {
-			createInfo.enabledLayerCount = 0;
+		populateDebugMessengerCreateInfo(debugCreateInfo);
+		createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
 
-			createInfo.pNext = nullptr;
-		}
 
 		try {
 			if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
@@ -399,7 +530,7 @@ private:
 
 				vertex.texCoord = {
 					attrib.texcoords[2 * index.texcoord_index + 0],
-					1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
+					1.0f - attrib.texcoords[2 * index.texcoord_index + 1] // flip the y coord
 				};
 
 				vertex.color = { 1.0f, 1.0f, 1.0f };
@@ -431,8 +562,6 @@ private:
 	// create the debug messenger to use with the instance of vulkan if in debug mode using struct filled from populateDebugMessengerCreateInfo()
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	void setupDebugMessenger() {
-		if (!enableValidationLayers) return;
-
 		VkDebugUtilsMessengerCreateInfoEXT createInfo;
 		populateDebugMessengerCreateInfo(createInfo);
 
@@ -451,9 +580,7 @@ private:
 
 		std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
-		if (enableValidationLayers) {
-			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-		}
+		extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
 		std::cout << "available extensions:\n";
 		for (auto extension : extensions) {
@@ -472,7 +599,7 @@ private:
 		std::vector<VkLayerProperties> availableLayers(layerCount);
 		vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
 
-		for (const char* layerName : validationLayers) {
+		for (const char* layerName : config->validationLayers) {
 			std::cout << "searching for: " << layerName << "\n";
 			bool layerFound = false;
 
@@ -550,15 +677,11 @@ private:
 		createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
 		createInfo.pQueueCreateInfos = queueCreateInfos.data();
 		createInfo.pEnabledFeatures = &deviceFeatures;
-		createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
-		createInfo.ppEnabledExtensionNames = deviceExtensions.data();
+		createInfo.enabledExtensionCount = static_cast<uint32_t>(config->deviceExtensions.size());
+		createInfo.ppEnabledExtensionNames = config->deviceExtensions.data();
 
-		if (enableValidationLayers) {
-			createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
-			createInfo.ppEnabledLayerNames = validationLayers.data();
-		} else {
-			createInfo.enabledLayerCount = 0;
-		}
+		createInfo.enabledLayerCount = static_cast<uint32_t>(config->validationLayers.size());
+		createInfo.ppEnabledLayerNames = config->validationLayers.data();
 
 		if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create logical device!");
@@ -599,7 +722,7 @@ private:
 		std::vector<VkExtensionProperties> availableExtensions(extensionCount);
 		vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
 
-		std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
+		std::set<std::string> requiredExtensions(config->deviceExtensions.begin(), config->deviceExtensions.end());
 
 		for (const auto& extension : availableExtensions) {
 			requiredExtensions.erase(extension.extensionName);
@@ -1364,28 +1487,24 @@ private:
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// This function will generate a new transformation every frame to make the geometry spin around.
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	void updateUniformBuffer(uint32_t currentImage) {
-		// start out with some logic to calculate the time in seconds since rendering has started with floating point accuracy.
-		static auto startTime = std::chrono::high_resolution_clock::now();
-		auto currentTime = std::chrono::high_resolution_clock::now();
-		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-		// now define the model, view, and projection transformations in the uniform buffer object. The model rotation will be a 
+	void updateUniformBuffer(uint32_t currentImage, float dt) {
+		// define the model, view, and projection transformations in the uniform buffer object. The model rotation will be a 
 		// simple rotation around the Z-axis using the time variable
 		// The glm::rotate function takes an existing transformation, rotation angle and rotation axis as parameters. The 
 		// glm::mat4(1.0f) constructor returns an identity matrix. Using a rotation angle of time * glm::radians(90.0f) accomplishes
 		// the rotation of 90 degrees per second.
 		UniformBufferObject ubo{};
-		ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo.model = glm::rotate(glm::mat4(1.0f), dt * glm::radians(90.f), glm::vec3(0.0f, 0.0f, 1.0f));
 
 		// For the view transformation I've decided to look at the geometry from above at a 45 degree angle. The glm::lookAt function
 		// takes the eye position, center position and up axis as parameters.
-		ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo.view = camera.getViewMatrix();
+			//glm::lookAt(player.position, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 
 		// I've chosen to use a perspective projection with a 45 degree vertical field-of-view. The other parameters are the aspect 
 		// ratio, near and far view planes. It is important to use the current swap chain extent to calculate the aspect ratio to 
 		// take into account the new width and height of the window after a resize.
-		ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
+		ubo.proj = camera.getProjMatrix();
 
 		// GLM was originally designed for OpenGL, where the Y coordinate of the clip coordinates is inverted. The easiest way to 
 		// compensate for that is to flip the sign on the scaling factor of the Y axis in the projection matrix. If you don't do 
@@ -1706,99 +1825,16 @@ private:
 		}
 	}
 
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// Draw the god damned frame
-	// function will perform the following operations:
-	//
-	//		Acquire an image from the swap chain
-	//		Execute the command buffer with that image as attachment in the framebuffer
-	//		Return the image to the swap chain for presentation
-	//
-	// Each of these events is set in motion using a single function call, but they are executed asynchronously. The function calls 
-	// will return before the operations are actually finished and the order of execution is also undefined. Unfortunate, because 
-	// each of the operations depends on the previous one finishing. There are two ways of synchronizing swap chain events: fences 
-	// and semaphores. They're both objects that can be used for coordinating operations by having one operation signal and another 
-	// operation wait for a fence or semaphore to go from the unsignaled to signaled state. The difference is that the state of 
-	// fences can be accessed from your program using calls like vkWaitForFences and semaphores cannot be. Fences are mainly designed
-	// to synchronize your application itself with rendering operation, whereas semaphores are used to synchronize operations within
-	// or across command queues. We want to synchronize the queue operations of draw commands and presentation, which makes 
-	// semaphores the best fit.
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	void drawFrame() {
-		vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
-
-		uint32_t imageIndex;
-		VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
-
-		updateUniformBuffer(imageIndex);
-
-		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-			recreateSwapChain();
-			return;
-		} else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
-			throw std::runtime_error("failed to acquire swap chain image!");
-		}
-
-		// Check if a previous frame is using this image (i.e.there is its fence to wait on)
-		if (imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
-			vkWaitForFences(device, 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
-		}
-		// Mark the image as now being in use by this frame
-		imagesInFlight[imageIndex] = inFlightFences[currentFrame];
-
-		VkSubmitInfo submitInfo{};
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-		VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
-		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-		submitInfo.waitSemaphoreCount = 1;
-		submitInfo.pWaitSemaphores = waitSemaphores;
-		submitInfo.pWaitDstStageMask = waitStages;
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
-
-		VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
-		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = signalSemaphores;
-
-		vkResetFences(device, 1, &inFlightFences[currentFrame]);
-
-		if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
-			throw std::runtime_error("failed to submit draw command buffer!");
-		}
-
-		VkPresentInfoKHR presentInfo{};
-		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-		presentInfo.waitSemaphoreCount = 1;
-		presentInfo.pWaitSemaphores = signalSemaphores;
-
-		VkSwapchainKHR swapChains[] = { swapChain };
-		presentInfo.swapchainCount = 1;
-		presentInfo.pSwapchains = swapChains;
-		presentInfo.pImageIndices = &imageIndex;
-		presentInfo.pResults = nullptr; // Optional
-
-		result = vkQueuePresentKHR(presentQueue, &presentInfo);
-
-		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
-			framebufferResized = false;
-			recreateSwapChain();
-		} else if (result != VK_SUCCESS) {
-			throw std::runtime_error("failed to present swap chain image!");
-		}
-
-		// Increment the frame. By using the modulo(%) operator, we ensure that the frame index loops around after every MAX_FRAMES_IN_FLIGHT enqueued frames.
-		currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
-	}
+	
 
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// create the semaphores and fences to use in syncronizing the drawing of frames as well as syncing the CPU and GPU
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	void createSyncObjects() {
-		imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-		renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-		inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+		imageAvailableSemaphores.resize(config->maxFramesInFlight);
+		renderFinishedSemaphores.resize(config->maxFramesInFlight);
+		inFlightFences.resize(config->maxFramesInFlight);
 		imagesInFlight.resize(swapChainImages.size(), VK_NULL_HANDLE);
 
 		VkSemaphoreCreateInfo semaphoreInfo{};
@@ -1808,7 +1844,7 @@ private:
 		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 		fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		for (size_t i = 0; i < config->maxFramesInFlight; i++) {
 			if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
 				vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
 				vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS) {
@@ -1862,6 +1898,10 @@ private:
 			glfwGetFramebufferSize(window, &width, &height);
 			glfwWaitEvents();
 		}
+
+		config->windowX = width;
+		config->windowY = height;
+		camera.recreateProjectionMatrix(*config);
 
 		vkDeviceWaitIdle(device);
 
@@ -1934,3 +1974,54 @@ private:
 		return VK_FALSE;
 	}
 };
+
+void handleKeyboardInput(GLFWwindow* window, int key, int scancode, int action, int mods) {
+	if (key == GLFW_KEY_W && action == GLFW_PRESS) { forwardPressed = true; }
+	if (key == GLFW_KEY_S && action == GLFW_PRESS) { backPressed = true; }
+	if (key == GLFW_KEY_A && action == GLFW_PRESS) { leftPressed = true; }
+	if (key == GLFW_KEY_D && action == GLFW_PRESS) { rightPressed = true; }
+	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) { upPressed = true; }
+	if (key == GLFW_KEY_LEFT_CONTROL && action == GLFW_PRESS) { downPressed = true; }
+
+	if (key == GLFW_KEY_W && action == GLFW_RELEASE) { forwardPressed = false; }
+	if (key == GLFW_KEY_S && action == GLFW_RELEASE) { backPressed = false; }
+	if (key == GLFW_KEY_A && action == GLFW_RELEASE) { leftPressed = false; }
+	if (key == GLFW_KEY_D && action == GLFW_RELEASE) { rightPressed = false; }
+	if (key == GLFW_KEY_SPACE && action == GLFW_RELEASE) { upPressed = false; }
+	if (key == GLFW_KEY_LEFT_CONTROL && action == GLFW_RELEASE) { downPressed = false; }
+	
+}
+
+double lastMouseX;
+double lastMouseY;
+
+void handleMouseInput(GLFWwindow* window, double xpos, double ypos) {
+	if (firstMouse) { 
+		firstMouse = false; 
+		lastMouseX = xpos;
+		lastMouseY = ypos;
+		return;
+	}
+
+	static float const BOUND = 89.f;
+	double dx = xpos - lastMouseX;
+	double dy = ypos - lastMouseY;
+
+	auto rotation = &(player.rotation);
+
+	rotation->y += dx * sensitivity;
+	rotation->x += dy * sensitivity;
+
+	if (rotation->x > BOUND)
+		rotation->x = BOUND;
+	else if (rotation->x < -BOUND)
+		rotation->x = -BOUND;
+
+	if (rotation->y > 360)
+		rotation->y = 0;
+	else if (rotation->y < 0)
+		rotation->y = 360;
+
+	lastMouseX = xpos;
+	lastMouseY = ypos;
+}

@@ -1,10 +1,9 @@
+#pragma once
 #include <array>
-
 #include "glm.h"
 
-
 struct Plane {
-    float distanceToPoint(const glm::vec3& point) const;
+    float distanceToPoint(glm::vec3& point);
 
     float distanceToOrigin;
     glm::vec3 normal;
@@ -12,8 +11,8 @@ struct Plane {
 
 class ViewFrustum {
 public:
-    void update(const glm::mat4& projViewMatrix) noexcept;
+    void update(glm::mat4& projViewMatrix);
 
 private:
-    std::array<Plane, 6> planes;
+    std::array<Plane, 6> m_planes;
 };
