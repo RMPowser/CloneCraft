@@ -5,14 +5,6 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
-    </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
-    </Filter>
     <Filter Include="Shaders">
       <UniqueIdentifier>{0fed63e7-afe5-4431-b87a-bd4fb246f7e7}</UniqueIdentifier>
     </Filter>
@@ -21,7 +13,6 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="MatrixFunctions.cpp">
     <ClCompile Include="Camera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -36,23 +27,18 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Shaders\compile.bat">
     <None Include="Shaders\frag.spv">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="Shaders\frag.spv">
     <None Include="Shaders\vert.spv">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="Shaders\shader.frag">
     <None Include="shaders\compile.bat">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="Shaders\shader.vert">
     <None Include="shaders\shader.frag">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="Shaders\vert.spv">
     <None Include="shaders\shader.vert">
       <Filter>Shaders</Filter>
     </None>
@@ -62,7 +48,6 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="CloneCraftApp.h">
-      <Filter>Header Files</Filter>
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="Entity.h">
@@ -72,23 +57,14 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="Camera.h">
-      <Filter>Header Files</Filter>
       <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Entity.h">
-      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Frustum.h">
-      <Filter>Header Files</Filter>
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="glm.h">
-      <Filter>Header Files</Filter>
     <ClInclude Include="AppConfig.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="MatrixFunctions.h">
-      <Filter>Header Files</Filter>
     <ClInclude Include="Player.h">
       <Filter>Source Files</Filter>
     </ClInclude>
