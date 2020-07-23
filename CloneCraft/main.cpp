@@ -1,4 +1,5 @@
 #include "CloneCraftApp.h"
+#include "Block.h"
 
 int main() {
 	AppConfig config(800, 600, 75, "CloneCraft   :^)", 2, { VK_KHR_SWAPCHAIN_EXTENSION_NAME });

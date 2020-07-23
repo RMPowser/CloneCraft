@@ -1,18 +1,19 @@
 #pragma once
 #include "Entity.h"
+#include "World.h"
+#include "AABB.h"
 #include <vector>
 
 
 
 class Player : public Entity {
-    friend class Player;
 public:
     Player();
 
     void update(float dt);
-    glm::vec3 m_acceleration;
+    void collide(World& world, const glm::vec3& vel);
+    glm::vec3 acceleration;
 
-private:
-    
+    World* world;
 };
 

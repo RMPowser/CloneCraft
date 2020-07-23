@@ -104,7 +104,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\SDKs\VulkanSDK\1.2.135.0\Include;C:\SDKs\glfw-3.3.2.bin.WIN64\include;C:\SDKs\glm;C:\SDKs\stb-master;C:\SDKs\tinyobjloader-master;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\SDKs\VulkanSDK\1.2.135.0\Include;C:\SDKs\glfw-3.3.2.bin.WIN64\include;C:\SDKs\glm;C:\SDKs\stb-master;C:\SDKs\tinyobjloader-master;C:\SDKs\boost_1_73_0</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <BrowseInformation>true</BrowseInformation>
     </ClCompile>
@@ -146,7 +146,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\SDKs\VulkanSDK\1.2.135.0\Include;C:\SDKs\glfw-3.3.2.bin.WIN64\include;C:\SDKs\glm;C:\SDKs\stb-master;C:\SDKs\tinyobjloader-master;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\SDKs\VulkanSDK\1.2.135.0\Include;C:\SDKs\glfw-3.3.2.bin.WIN64\include;C:\SDKs\glm;C:\SDKs\stb-master;C:\SDKs\tinyobjloader-master;C:\SDKs\boost_1_73_0</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -169,11 +169,11 @@ copy "$(ProjectDir)shaders\*" "$(OutDir)shaders"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Block.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="Frustum.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Player.cpp" />
-    <ClCompile Include="World.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\compile.bat" />
@@ -183,7 +183,9 @@ copy "$(ProjectDir)shaders\*" "$(OutDir)shaders"</Command>
     <None Include="Shaders\vert.spv" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AABB.h" />
     <ClInclude Include="AppConfig.h" />
+    <ClInclude Include="Block.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="CloneCraftApp.h" />
     <ClInclude Include="Entity.h" />
@@ -191,6 +193,8 @@ copy "$(ProjectDir)shaders\*" "$(OutDir)shaders"</Command>
     <ClInclude Include="glm.h" />
     <ClInclude Include="MatrixFunctions.h" />
     <ClInclude Include="Player.h" />
+    <ClInclude Include="UBO.h" />
+    <ClInclude Include="Vertex.h" />
     <ClInclude Include="World.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

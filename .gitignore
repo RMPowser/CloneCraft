@@ -362,3 +362,5 @@ MigrationBackup/
 FodyWeavers.xsd
 /*.sublime-workspace
 /CloneCraft/*.cd
+/CloneCraft/models/rungholt.obj
+/CloneCraft/textures/rungholt-RGBA.png

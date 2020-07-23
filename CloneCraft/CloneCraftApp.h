@@ -1,21 +1,16 @@
 #pragma once
+#include <Windows.h>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include "MatrixFunctions.h"
 #include "AppConfig.h"
 #include "Camera.h"
 #include "Player.h"
+#include "World.h"
+#include "Block.h"
+#include "Vertex.h"
+#include "UBO.h"
 #include "glm.h"
-
-
-#define STB_IMAGE_IMPLEMENTATION // The header only defines the prototypes of the functions by default. One code file needs to include the header with the STB_IMAGE_IMPLEMENTATION definition to include the function bodies, otherwise we'll get linking errors.
-#include <stb_image.h>
-
-#define TINYOBJLOADER_IMPLEMENTATION
-#include <tiny_obj_loader.h>
-
-// The chrono standard library header exposes functions to do precise timekeeping. We'll use this to make sure that the geometry
-// rotates 90 degrees per second regardless of frame rate.
 #include <chrono>
 #include <iostream>
 #include <fstream>
@@ -29,17 +24,15 @@
 #include <algorithm>
 #include <glm/glm.hpp>
 #include <array>
-#include <unordered_map>
 
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/hash.hpp>
+
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // define globals
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-const std::string MODEL_PATH = "models/viking_room.obj";
-const std::string TEXTURE_PATH = "textures/viking_room.png";
+//const std::string MODEL_PATH = "models/GrassBlock.obj";
+//const std::string TEXTURE_PATH = "textures/GrassBlock.png";
 Player player;
 bool cameraMat4Updated = false;
 bool playerMat4Updated = false;
@@ -52,7 +45,7 @@ bool rightPressed = false;
 bool backPressed = false;
 bool upPressed = false;
 bool downPressed = false;
-float speed = 0.2f;
+float moveAcceleration = 0.2f;
 
 struct QueueFamilyIndices {
 	std::optional<uint32_t> graphicsFamily;
@@ -68,63 +61,6 @@ struct SwapChainSupportDetails {
 	std::vector<VkSurfaceFormatKHR> formats;
 	std::vector<VkPresentModeKHR> presentModes;
 };
-
-struct UniformBufferObject {
-	alignas(16) glm::mat4 model;
-	alignas(16) glm::mat4 view;
-	alignas(16) glm::mat4 proj;
-};
-
-struct Vertex {
-	glm::vec3 pos;
-	glm::vec3 color;
-	glm::vec2 texCoord;
-
-	static VkVertexInputBindingDescription getBindingDescription() {
-		VkVertexInputBindingDescription bindingDescription{};
-		bindingDescription.binding = 0;
-		bindingDescription.stride = sizeof(Vertex);
-		bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-		return bindingDescription;
-	}
-
-	static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
-		std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
-
-		attributeDescriptions[0].binding = 0;
-		attributeDescriptions[0].location = 0;
-		attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-		attributeDescriptions[0].offset = offsetof(Vertex, pos);
-
-		attributeDescriptions[1].binding = 0;
-		attributeDescriptions[1].location = 1;
-		attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-		attributeDescriptions[1].offset = offsetof(Vertex, color);
-
-		attributeDescriptions[2].binding = 0;
-		attributeDescriptions[2].location = 2;
-		attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-		attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
-
-		return attributeDescriptions;
-	}
-
-	bool operator==(const Vertex& other) const {
-		return pos == other.pos && color == other.color && texCoord == other.texCoord;
-	}
-};
-
-namespace std {
-	template<> struct hash<Vertex> {
-		size_t operator()(Vertex const& vertex) const {
-			return ((hash<glm::vec3>()(vertex.pos) ^
-				(hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^
-				(hash<glm::vec2>()(vertex.texCoord) << 1);
-		}
-	};
-}
-
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // creates the dubug messenger to be used by the validation layers by getting a function pointer
@@ -161,85 +97,78 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
 class CloneCraftApplication {
 public:
 	CloneCraftApplication(GLFWwindow* _window, AppConfig* _config) :
-		camera(*_config)
-	{
+	camera(*_config),
+	world(&blockdb) {
 		config = _config;
 		#ifdef NDEBUG
-		config->validationLayers = { "VK_LAYER_LUNARG_monitor" };
+		config->validationLayers = { "VK_LAYER_LUNARG_monitor" }; // this is so we still get fps display in release mode.
 		#else
 		config->validationLayers = { "VK_LAYER_KHRONOS_validation", "VK_LAYER_LUNARG_monitor" };
 		#endif
 		
-		camera.hookEntity(*p_player);
+		camera.hookEntity(player);
 		window = _window;
 		glfwSetWindowUserPointer(window, this);
 		glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 	}
 
 	void run() {
-		initWindow();
+		player.world = &world;
+		createWorld();
 		initVulkan();
 		mainLoop();
 		cleanup();
 	}
 
 private:
-	AppConfig* config;
-	Camera camera;
-	Player* p_player = &player;
+	AppConfig*						config;
+	Camera							camera;
+	BlockDatabase					blockdb;
+	World							world;
 
-	GLFWwindow* window;
-	VkInstance instance;
-	VkDebugUtilsMessengerEXT debugMessenger;
-	VkSurfaceKHR surface;
-	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-	VkDevice device;
-	VkQueue graphicsQueue;
-	VkQueue presentQueue;
-	VkSwapchainKHR swapChain;
-	std::vector<VkImage> swapChainImages;
-	VkFormat swapChainImageFormat;
-	VkExtent2D swapChainExtent;
-	std::vector<VkImageView> swapChainImageViews;
-	VkRenderPass renderPass;
-	VkDescriptorSetLayout descriptorSetLayout;
-	VkPipelineLayout pipelineLayout;
-	VkPipeline graphicsPipeline;
-	std::vector<VkFramebuffer> swapChainFramebuffers;
-	VkCommandPool commandPool;
-	std::vector<VkCommandBuffer> commandBuffers; // Command buffers will be automatically freed when their command pool is destroyed, so we don't need an explicit cleanup.
-	std::vector<VkSemaphore> imageAvailableSemaphores;
-	std::vector<VkSemaphore> renderFinishedSemaphores;
-	std::vector<VkFence> inFlightFences;
-	std::vector<VkFence> imagesInFlight;
-	size_t currentFrame = 0; // keeps track of the current frame. no way! :D
-	bool framebufferResized = false;
-	std::vector<Vertex> vertices;
-	std::vector<uint32_t> indices;
-	VkBuffer vertexBuffer;
-	VkDeviceMemory vertexBufferMemory;
-	VkBuffer indexBuffer;
-	VkDeviceMemory indexBufferMemory;
-	std::vector<VkBuffer> uniformBuffers;
-	std::vector<VkDeviceMemory> uniformBuffersMemory;
-	VkDescriptorPool descriptorPool;
-	std::vector<VkDescriptorSet> descriptorSets;
-	VkImage textureImage;
-	VkDeviceMemory textureImageMemory;
-	VkImageView textureImageView;
-	VkSampler textureSampler;
-	VkImage depthImage;
-	VkDeviceMemory depthImageMemory;
-	VkImageView depthImageView;
-
-
-
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// create a window using glfw because vulkan cant create windows
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	void initWindow() {
-		
-	}
+	GLFWwindow*						window;
+	VkInstance						instance;
+	VkDebugUtilsMessengerEXT		debugMessenger;
+	VkSurfaceKHR					surface;
+	VkPhysicalDevice				physicalDevice = VK_NULL_HANDLE;
+	VkDevice						device;
+	VkQueue							graphicsQueue;
+	VkQueue							presentQueue;
+	VkSwapchainKHR					swapChain;
+	std::vector<VkImage>			swapChainImages;
+	VkFormat						swapChainImageFormat;
+	VkExtent2D						swapChainExtent;
+	std::vector<VkImageView>		swapChainImageViews;
+	VkRenderPass					renderPass;
+	VkDescriptorSetLayout			descriptorSetLayout;
+	VkPipelineLayout				pipelineLayout;
+	VkPipeline						graphicsPipeline;
+	std::vector<VkFramebuffer>		swapChainFramebuffers;
+	VkCommandPool					commandPool;
+	std::vector<VkCommandBuffer>	commandBuffers; // Command buffers will be automatically freed when their command pool is destroyed, so we don't need an explicit cleanup.
+	std::vector<VkSemaphore>		imageAvailableSemaphores;
+	std::vector<VkSemaphore>		renderFinishedSemaphores;
+	std::vector<VkFence>			inFlightFences;
+	std::vector<VkFence>			imagesInFlight;
+	size_t							currentFrame = 0; // keeps track of the current frame. no way! :D
+	bool							framebufferResized = false;
+	std::vector<Vertex>				vertices;
+	std::vector<uint32_t>			indices;
+	VkBuffer						vertexBuffer;
+	VkDeviceMemory					vertexBufferMemory;
+	VkBuffer						indexBuffer;
+	VkDeviceMemory					indexBufferMemory;
+	std::vector<VkBuffer>			uniformBuffers;
+	std::vector<VkDeviceMemory>		uniformBuffersMemory;
+	VkDescriptorPool				descriptorPool;
+	std::vector<VkDescriptorSet>	descriptorSets;
+	std::vector<VkImage>			textureImages;
+	std::vector<VkDeviceMemory>		textureImagesMemory;
+	std::vector<VkImageView>		textureImageViews;
+	VkSampler						textureSampler;
+	VkImage							depthImage;
+	VkDeviceMemory					depthImageMemory;
+	VkImageView						depthImageView;
 
 	// The reason that we're creating a static function as a callback is because GLFW does not know how to properly call a member 
 	// function with the right 'this' pointer to our HelloTriangleApplication instance. However, we do get a reference to the 
@@ -266,12 +195,9 @@ private:
 		createDepthResources();
 		createFrameBuffers();
 		createCommandPool();
-		createTextureImage();
-		createTextureImageView();
+		createTextureImages();
 		createTextureSampler();
-		loadModel();
-		createVertexBuffer();
-		createIndexBuffer();
+		createVertexAndIndexBuffer();
 		createUniformBuffers();
 		createDescriptorPool();
 		createDescriptorSets();
@@ -299,40 +225,61 @@ private:
 	}
 
 	void update(float dt) {
-		auto acceleration = &(player.m_acceleration);
+		auto acceleration = &(player.acceleration);
 		auto rotation = &(player.rotation);
 
 		if (forwardPressed) {
-			acceleration->x += -glm::cos(glm::radians(rotation->y + 90)) * speed;
-			acceleration->z += -glm::sin(glm::radians(rotation->y + 90)) * speed;
+			acceleration->x += -glm::cos(glm::radians(rotation->y + 90)) * moveAcceleration;
+			acceleration->z += -glm::sin(glm::radians(rotation->y + 90)) * moveAcceleration;
 		}
 		if (backPressed) {
-			acceleration->x += glm::cos(glm::radians(rotation->y + 90)) * speed;
-			acceleration->z += glm::sin(glm::radians(rotation->y + 90)) * speed;
+			acceleration->x += glm::cos(glm::radians(rotation->y + 90)) * moveAcceleration;
+			acceleration->z += glm::sin(glm::radians(rotation->y + 90)) * moveAcceleration;
 		}
 		if (leftPressed) {
-			acceleration->x += -glm::cos(glm::radians(rotation->y)) * speed;
-			acceleration->z += -glm::sin(glm::radians(rotation->y)) * speed;
+			acceleration->x += -glm::cos(glm::radians(rotation->y)) * moveAcceleration;
+			acceleration->z += -glm::sin(glm::radians(rotation->y)) * moveAcceleration;
 		}
 		if (rightPressed) {
-			acceleration->x += glm::cos(glm::radians(rotation->y)) * speed;
-			acceleration->z += glm::sin(glm::radians(rotation->y)) * speed;
+			acceleration->x += glm::cos(glm::radians(rotation->y)) * moveAcceleration;
+			acceleration->z += glm::sin(glm::radians(rotation->y)) * moveAcceleration;
 		}
 		if (upPressed) {
-			acceleration->y += speed;
+			acceleration->y += moveAcceleration;
 		}
 		if (downPressed) {
-			acceleration->y += -speed;
+			acceleration->y += -moveAcceleration;
 		}
 
-		/*std::cout << "\nx: " << player.position.x << " y: " << player.position.y << " z: " << player.position.z;
-		std::cout << "\nspeed: " << speed;
+#ifndef NDEBUG
+		system("CLS");
+		SetStdOutCursorPosition(0, 0);
+		std::cout << "Player";
+		std::cout << "\nx: " << player.bbox.position.x << "\ty: " << player.bbox.position.y << "\tz: " << player.bbox.position.z;
+		//std::cout << "\nx: " << player.aabb.position.x << "\ty: " << player.aabb.position.y << "\tz: " << player.aabb.position.z;
+		std::cout << "\nspeed: " << moveAcceleration;
 		std::cout << "\nacceleration x: " << acceleration->x << " y: " << acceleration->y << " z: " << acceleration->z;
 		std::cout << "\nvelocity x: " << player.velocity.x << " y: " << player.velocity.y << " z: " << player.velocity.z;
-		std::cout << "\ndt: " << dt;*/
+		std::cout << "\ndt: " << dt;
+#endif // DEBUG
+
+		
+		
+		//std::cout << "\n\nBlock";
+		//std::cout << "\nx: " << block->position.x << "\ty: " << block->position.y << "\tz: " << block->position.z;
+		//std::cout << "\nx: " << block->aabb.position.x << "\ty: " << block->aabb.position.y << "\tz: " << block->aabb.position.z;
 
 		player.update(dt);
 		camera.update();
+	}
+
+	void SetStdOutCursorPosition(short CoordX, short CoordY)
+		//our function to set the cursor position.
+	{
+		HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+		COORD position = { CoordX,CoordY };
+
+		SetConsoleCursorPosition(hStdout, position);
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -426,11 +373,13 @@ private:
 		cleanupSwapChain();
 
 		vkDestroySampler(device, textureSampler, nullptr);
-		vkDestroyImageView(device, textureImageView, nullptr);
-
-		vkDestroyImage(device, textureImage, nullptr);
-		vkFreeMemory(device, textureImageMemory, nullptr);
-
+		
+		for (size_t i = 0; i < textureImages.size(); i++) {
+			vkDestroyImageView(device, textureImageViews[i], nullptr);
+			vkDestroyImage(device, textureImages[i], nullptr);
+			vkFreeMemory(device, textureImagesMemory[i], nullptr);
+		}
+		
 		vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 
 		vkDestroyBuffer(device, indexBuffer, nullptr);
@@ -457,6 +406,16 @@ private:
 		glfwDestroyWindow(window);
 
 		glfwTerminate();
+	}
+
+	void createWorld() {
+		for (int x = 0; x < 100; x++) {
+			for (int y = 0; y < 20; y++) {
+				for (int z = 0; z < 100; z++) {
+					world.addBlock(BlockId::Grass, x, y, z);
+				}
+			}
+		}
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -506,44 +465,7 @@ private:
 		}
 	}
 
-	void loadModel() {
-		tinyobj::attrib_t attrib;
-		std::vector<tinyobj::shape_t> shapes;
-		std::vector<tinyobj::material_t> materials;
-		std::string warn, err;
-
-		if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, MODEL_PATH.c_str())) {
-			throw std::runtime_error(warn + err);
-		}
-
-		std::unordered_map<Vertex, uint32_t> uniqueVertices{};
-
-		for (const auto& shape : shapes) {
-			for (const auto& index : shape.mesh.indices) {
-				Vertex vertex{};
-
-				vertex.pos = {
-					attrib.vertices[3 * index.vertex_index + 0],
-					attrib.vertices[3 * index.vertex_index + 1],
-					attrib.vertices[3 * index.vertex_index + 2]
-				};
-
-				vertex.texCoord = {
-					attrib.texcoords[2 * index.texcoord_index + 0],
-					1.0f - attrib.texcoords[2 * index.texcoord_index + 1] // flip the y coord
-				};
-
-				vertex.color = { 1.0f, 1.0f, 1.0f };
-
-				if (uniqueVertices.count(vertex) == 0) {
-					uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
-					vertices.push_back(vertex);
-				}
-
-				indices.push_back(uniqueVertices[vertex]);
-			}
-		}
-	}
+	
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// populate the struct to use for creating the debug messenger 
@@ -803,7 +725,7 @@ private:
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// create the swap chain using all of the helper functions 
+	// create the swap chain using helper functions 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	void createSwapChain() {
 		SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice);
@@ -1000,54 +922,49 @@ private:
 		}
 	}
 
-	void createTextureImage() {
-		// The stbi_load function takes the file path and number of channels to load as arguments. 
-		// The STBI_rgb_alpha value forces the image to be loaded with an alpha channel, even if it 
-		// doesn't have one, which is nice for consistency with other textures in the future. The 
-		// middle three parameters are outputs for the width, height and actual number of channels in the image. 
-		// The pointer that is returned is the first element in an array of pixel values. The pixels are 
-		// laid out row by row with 4 bytes per pixel in the case of STBI_rgb_alpha for a total of texWidth * texHeight * 4 values.
-		int texWidth, texHeight, texChannels;
-		stbi_uc* pixels = stbi_load(TEXTURE_PATH.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-		VkDeviceSize imageSize = (uint64_t)texWidth * (uint64_t)texHeight * 4;
+	void createTextureImages() {
+		for (int i = 1; i < (int)BlockId::NUM_TYPES; i++) {
+			int index = i - 1; // skip air because it has no texture
+			VkBuffer stagingBuffer;
+			VkDeviceMemory stagingBufferMemory;
 
-		if (!pixels) {
-			throw std::runtime_error("failed to load texture image!");
+			auto imageSize = blockdb.blockDataFor((BlockId)i).getTexture().size;
+			auto pixels = blockdb.blockDataFor((BlockId)i).getTexture().image;
+			auto texWidth = blockdb.blockDataFor((BlockId)i).getTexture().width;
+			auto texHeight = blockdb.blockDataFor((BlockId)i).getTexture().height;
+
+			// The buffer should be in host visible memory so that we can map it and it should be usable as a transfer source so that we can copy it to an image later on
+			createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+			// We can then directly copy the pixel values that we got from the image loading library to the buffer
+			void* data;
+			vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
+			memcpy(data, pixels, static_cast<size_t>(imageSize));
+			vkUnmapMemory(device, stagingBufferMemory);
+
+			VkImage image;
+			VkDeviceMemory imageMemory;
+			createImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, image, imageMemory);
+
+			textureImages.push_back(image);
+			textureImagesMemory.push_back(imageMemory);
+
+			transitionImageLayout(textureImages[index], VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+			// The image was created with the VK_IMAGE_LAYOUT_UNDEFINED layout, so that one should be specified as old layout when transitioning textureImage. Remember that we can do this because we don't care about its contents before performing the copy operation.
+			copyBufferToImage(stagingBuffer, textureImages[index], static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+
+			// To be able to start sampling from the texture image in the shader, we need one last transition to prepare it for shader access
+			transitionImageLayout(textureImages[index], VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+			vkDestroyBuffer(device, stagingBuffer, nullptr);
+			vkFreeMemory(device, stagingBufferMemory, nullptr);
+
+			VkImageView imageView = createImageView(textureImages[index], VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+
+			textureImageViews.push_back(imageView);
 		}
-
-		// create a buffer in host visible memory so that we can use vkMapMemory and copy the pixels to it
-		VkBuffer stagingBuffer;
-		VkDeviceMemory stagingBufferMemory;
-
-		// The buffer should be in host visible memory so that we can map it and it should be usable as a transfer source so that we can copy it to an image later on
-		createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-
-		// We can then directly copy the pixel values that we got from the image loading library to the buffer
-		void* data;
-		vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
-		memcpy(data, pixels, static_cast<size_t>(imageSize));
-		vkUnmapMemory(device, stagingBufferMemory);
-
-		// dont forget to clean up the original pixel array now
-		stbi_image_free(pixels);
-
-		createImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
-
-		transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
-		// The image was created with the VK_IMAGE_LAYOUT_UNDEFINED layout, so that one should be specified as old layout when transitioning textureImage. Remember that we can do this because we don't care about its contents before performing the copy operation.
-		copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-
-		// To be able to start sampling from the texture image in the shader, we need one last transition to prepare it for shader access
-		transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-		vkDestroyBuffer(device, stagingBuffer, nullptr);
-		vkFreeMemory(device, stagingBufferMemory, nullptr);
-	}
-
-	void createTextureImageView() {
-		textureImageView = createImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
 	}
 
 	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags) {
@@ -1372,7 +1289,7 @@ private:
 		VkCommandPoolCreateInfo poolInfo{};
 		poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 		poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
-		poolInfo.flags = 0; // Optional
+		poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
 		if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create command pool!");
@@ -1382,8 +1299,41 @@ private:
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// create the vertex buffer used to pass vertices into gpu memory
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	void createVertexBuffer() {
-		VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+	void createVertexAndIndexBuffer() {
+		for (size_t x = 0; x < 100; x++) {
+			for (size_t y = 0; y < 20; y++) {
+				for (size_t z = 0; z < 100; z++) {
+					// for each block in the world vector
+					auto blockId = world.getBlock(x, y, z);
+					if (blockId == BlockId::Air) {
+						continue;
+					}
+					Vec3 blockPosition = { x, y, z };
+
+					// get its data
+					auto verts = blockdb.blockDataFor(blockId).getVertices();
+					auto inds = blockdb.blockDataFor(blockId).getIndices();
+
+					// account for the block position and store the new verts for later
+					for (int i = 0; i < verts.size(); i++) {
+						Vertex v(verts[i]);
+						v.pos += blockPosition;
+						vertices.push_back(v);
+					}
+
+					// store the indices for later accounting for the offset into the verts vector
+					for (int i = 0; i < inds.size(); i++) {
+						int ind(inds[i] + vertices.size());
+						indices.push_back(ind);
+					}
+				}
+			}
+		}
+
+
+
+		// time to start creating the actual buffer	
+		VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
 
 
 		// We're now using a new stagingBuffer with stagingBufferMemory for mapping and copying the vertex data. 
@@ -1391,10 +1341,10 @@ private:
 		//
 		//		VK_BUFFER_USAGE_TRANSFER_SRC_BIT: Buffer can be used as source in a memory transfer operation.
 		//		VK_BUFFER_USAGE_TRANSFER_DST_BIT: Buffer can be used as destination in a memory transfer operation.
-		VkBuffer stagingBuffer;
-		VkDeviceMemory stagingBufferMemory;
-		// see createBuffer() for specifics on how buffer creation works
-		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+		VkBuffer vertexStagingBuffer;
+		VkDeviceMemory vertexStagingBufferMemory;
+		
+		createBuffer(vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertexStagingBuffer, vertexStagingBufferMemory);
 
 		// we need to copy the vertex data to the buffer. This is done by mapping the buffer memory into CPU accessible memory
 		// with vkMapMemory.
@@ -1403,12 +1353,10 @@ private:
 		// all of the memory. The second to last parameter can be used to specify flags, but there aren't any available yet in the 
 		// current API (1.2) and it is reserved for future use. It must be set to the value 0. The last parameter specifies the
 		// output for the pointer to the mapped memory.
-		void* data;
-		vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-
-		// You can now simply memcpy the vertex data to the mapped memory and unmap it again using vkUnmapMemory.
-		memcpy(data, vertices.data(), (size_t)bufferSize);
-		vkUnmapMemory(device, stagingBufferMemory);
+		void* vertexData;
+		vkMapMemory(device, vertexStagingBufferMemory, 0, vertexBufferSize, 0, &vertexData);
+		memcpy(vertexData, vertices.data(), (size_t)vertexBufferSize); // You can now simply memcpy the vertex data to the mapped memory and unmap it again using vkUnmapMemory.
+		vkUnmapMemory(device, vertexStagingBufferMemory);
 
 		// Unfortunately the driver may not immediately copy the data into the buffer memory, for example because of caching. It is 
 		// also possible that writes to the buffer are not visible in the mapped memory yet. There are two ways to deal with that problem:
@@ -1428,41 +1376,34 @@ private:
 		// use vkMapMemory. However, we can copy data from the stagingBuffer to the vertexBuffer. We have to indicate that we intend
 		// to do that by specifying the transfer source flag for the stagingBuffer and the transfer destination flag for the 
 		// vertexBuffer, along with the vertex buffer usage flag.
-		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
+		createBuffer(vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
 
 		// use copyBuffer() to move the vertex data to the device local buffer
-		copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
+		copyBuffer(vertexStagingBuffer, vertexBuffer, vertexBufferSize);
 
-		// After copying the data from the staging buffer to the device buffer, we should clean it up
-		vkDestroyBuffer(device, stagingBuffer, nullptr);
-		vkFreeMemory(device, stagingBufferMemory, nullptr);
-	}
+		// After copying the data from the staging buffer to the device buffer, we should clean up the staging buffer since it is no longer needed.
+		vkDestroyBuffer(device, vertexStagingBuffer, nullptr);
+		vkFreeMemory(device, vertexStagingBufferMemory, nullptr);
 
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// almost identical to createVertexBuffer(). only two notable differences. bufferSize is now equal to the number of indices times
-	// the size of the index type, either uint16_t or uint32_t. The usage of the indexBuffer should be 
-	// VK_BUFFER_USAGE_INDEX_BUFFER_BIT instead of VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, which makes sense. Other than that, the process
-	// is exactly the same. We create a staging buffer to copy the contents of the indices array to and then copy it to the final 
-	// device local index buffer.
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	void createIndexBuffer() {
-		VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 
-		VkBuffer stagingBuffer;
-		VkDeviceMemory stagingBufferMemory;
-		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+		// and do the same for the index buffer
+		VkDeviceSize indexBufferSize = sizeof(indices[0]) * indices.size();
 
-		void* data;
-		vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-		memcpy(data, indices.data(), (size_t)bufferSize);
-		vkUnmapMemory(device, stagingBufferMemory);
+		VkBuffer indexStagingBuffer;
+		VkDeviceMemory indexStagingBufferMemory;
+		createBuffer(indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, indexStagingBuffer, indexStagingBufferMemory);
 
-		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
+		void* indexData;
+		vkMapMemory(device, indexStagingBufferMemory, 0, indexBufferSize, 0, &indexData);
+		memcpy(indexData, indices.data(), (size_t)indexBufferSize);
+		vkUnmapMemory(device, indexStagingBufferMemory);
 
-		copyBuffer(stagingBuffer, indexBuffer, bufferSize);
+		createBuffer(indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
 
-		vkDestroyBuffer(device, stagingBuffer, nullptr);
-		vkFreeMemory(device, stagingBufferMemory, nullptr);
+		copyBuffer(indexStagingBuffer, indexBuffer, indexBufferSize);
+
+		vkDestroyBuffer(device, indexStagingBuffer, nullptr);
+		vkFreeMemory(device, indexStagingBufferMemory, nullptr);
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1488,22 +1429,10 @@ private:
 	// This function will generate a new transformation every frame to make the geometry spin around.
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	void updateUniformBuffer(uint32_t currentImage, float dt) {
-		// define the model, view, and projection transformations in the uniform buffer object. The model rotation will be a 
-		// simple rotation around the Z-axis using the time variable
-		// The glm::rotate function takes an existing transformation, rotation angle and rotation axis as parameters. The 
-		// glm::mat4(1.0f) constructor returns an identity matrix. Using a rotation angle of time * glm::radians(90.0f) accomplishes
-		// the rotation of 90 degrees per second.
+		// define the model, view, and projection transformations in the uniform buffer object. 
 		UniformBufferObject ubo{};
-		ubo.model = glm::rotate(glm::mat4(1.0f), dt * glm::radians(90.f), glm::vec3(0.0f, 0.0f, 1.0f));
-
-		// For the view transformation I've decided to look at the geometry from above at a 45 degree angle. The glm::lookAt function
-		// takes the eye position, center position and up axis as parameters.
+		ubo.model = glm::mat4(1.0f);
 		ubo.view = camera.getViewMatrix();
-			//glm::lookAt(player.position, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-
-		// I've chosen to use a perspective projection with a 45 degree vertical field-of-view. The other parameters are the aspect 
-		// ratio, near and far view planes. It is important to use the current swap chain extent to calculate the aspect ratio to 
-		// take into account the new width and height of the window after a resize.
 		ubo.proj = camera.getProjMatrix();
 
 		// GLM was originally designed for OpenGL, where the Y coordinate of the clip coordinates is inverted. The easiest way to 
@@ -1531,7 +1460,7 @@ private:
 		// size specifies the size of the buffer in bytes.
 		bufferInfo.size = size;
 
-		// usage indicates the purposes the data in the buffer will be used for. It is possible to specify multiple purposes using a bitwise or.
+		// usage indicates the purposes the data in the buffer will be used for. It is possible to specify multiple purposes using a bitwise OR.
 		bufferInfo.usage = usage;
 
 		// Just like the images in the swap chain, buffers can also be owned by a specific queue family or be shared between multiple at the same time. For now, the buffer will only be used from the graphics queue, so we can stick to exclusive access.
@@ -1627,7 +1556,7 @@ private:
 
 			VkDescriptorImageInfo imageInfo{};
 			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			imageInfo.imageView = textureImageView;
+			imageInfo.imageView = textureImageViews[0];
 			imageInfo.sampler = textureSampler;
 
 			std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
@@ -1715,20 +1644,20 @@ private:
 	void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
 		VkCommandBuffer commandBuffer = beginSingleTimeCommands();
 
-		VkBufferImageCopy region{};
-		region.bufferOffset = 0;
-		region.bufferRowLength = 0;
-		region.bufferImageHeight = 0;
+		VkBufferImageCopy imgCopy{};
+		imgCopy.bufferOffset = 0;
+		imgCopy.bufferRowLength = 0;
+		imgCopy.bufferImageHeight = 0;
 
-		region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		region.imageSubresource.mipLevel = 0;
-		region.imageSubresource.baseArrayLayer = 0;
-		region.imageSubresource.layerCount = 1;
+		imgCopy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		imgCopy.imageSubresource.mipLevel = 0;
+		imgCopy.imageSubresource.baseArrayLayer = 0;
+		imgCopy.imageSubresource.layerCount = 1;
 
-		region.imageOffset = { 0, 0, 0 };
-		region.imageExtent = { width, height, 1 };
+		imgCopy.imageOffset = { 0, 0, 0 };
+		imgCopy.imageExtent = { width, height, 1 };
 
-		vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+		vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imgCopy);
 
 		endSingleTimeCommands(commandBuffer);
 	}
@@ -1797,7 +1726,7 @@ private:
 			renderPassInfo.renderArea.extent = swapChainExtent;
 
 			std::array<VkClearValue, 2> clearValues{};
-			clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+			clearValues[0].color = { 0.0f, 0.0f, 0.0f, 0.0f };
 			clearValues[1].depthStencil = { 1.0f, 0 };
 
 			renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
