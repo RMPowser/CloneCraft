@@ -1,6 +1,6 @@
 #pragma once
 #include <Windows.h>
-#define GLFW_INCLUDE_VULKAN
+#include "vulkan/vulkan.h"
 #include <GLFW/glfw3.h>
 #include "MatrixFunctions.h"
 #include "AppConfig.h"

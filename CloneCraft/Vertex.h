@@ -1,7 +1,6 @@
 #pragma once
 #include "vulkan/vulkan.h"
 #include <array>
-#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/hash.hpp>
 #include <boost/container_hash/hash.hpp>
 
