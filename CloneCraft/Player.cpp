@@ -1,3 +1,4 @@
+#pragma once
 #include "Player.h"
 #include "Block.h"
 
@@ -13,13 +14,13 @@ void Player::update(float dt) {
 	acceleration = { 0, 0, 0 };
 
 	position.x += velocity.x * dt;
-	collide(*world, { velocity.x, 0, 0 });
+	//collide(*world, { velocity.x, 0, 0 });
 
 	position.y += velocity.y * dt;
-	collide(*world, { 0, velocity.y, 0 });
+	//collide(*world, { 0, velocity.y, 0 });
 
 	position.z += velocity.z * dt;
-	collide(*world, { 0, 0, velocity.z });
+	//collide(*world, { 0, 0, velocity.z });
 
 	velocity.x *= (0.95 * (1 - dt));
 	velocity.z *= (0.95 * (1 - dt));

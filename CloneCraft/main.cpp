@@ -17,11 +17,12 @@ int main() {
 	try {
 		app.run();
 	} catch (const std::exception& e) {
-		printf("%s\n", e.what());
+		printf("\n%s\n", e.what());
 		system("pause");
 		return EXIT_FAILURE;
 	}
 
+	printf("\n");
 	system("pause");
 	return EXIT_SUCCESS;
 }

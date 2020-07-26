@@ -1,3 +1,4 @@
+#pragma once
 #include "Frustum.h"
 
 enum Planes {

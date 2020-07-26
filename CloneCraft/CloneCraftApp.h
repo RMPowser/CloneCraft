@@ -7,6 +7,7 @@
 #include "Camera.h"
 #include "Player.h"
 #include "World.h"
+#include "Chunk.h"
 #include "Block.h"
 #include "Vertex.h"
 #include "UBO.h"
@@ -31,13 +32,12 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // define globals
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//const std::string MODEL_PATH = "models/GrassBlock.obj";
-//const std::string TEXTURE_PATH = "textures/GrassBlock.png";
 Player player;
 bool cameraMat4Updated = false;
 bool playerMat4Updated = false;
 bool firstMouse = true;
 float sensitivity = 0.1f;
+uint8_t renderDistance = 1; // render distance in chunks
 
 bool forwardPressed = false;
 bool leftPressed = false;
@@ -114,8 +114,13 @@ public:
 
 	void run() {
 		player.world = &world;
-		createWorld();
+		//createWorld();
 		initVulkan();
+
+#ifndef NDEBUG
+		//system("CLS");
+#endif // !NDEBUG
+		
 		mainLoop();
 		cleanup();
 	}
@@ -178,6 +183,7 @@ private:
 		auto app = reinterpret_cast<CloneCraftApplication*>(glfwGetWindowUserPointer(window));
 		app->framebufferResized = true;
 	}
+
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// initialize vulkan using an order of functions
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -197,7 +203,7 @@ private:
 		createCommandPool();
 		createTextureImages();
 		createTextureSampler();
-		createVertexAndIndexBuffer();
+		updateVertexAndIndexBuffer();
 		createUniformBuffers();
 		createDescriptorPool();
 		createDescriptorSets();
@@ -251,23 +257,24 @@ private:
 			acceleration->y += -moveAcceleration;
 		}
 
-#ifndef NDEBUG
-		system("CLS");
-		SetStdOutCursorPosition(0, 0);
-		std::cout << "Player";
-		std::cout << "\nx: " << player.bbox.position.x << "\ty: " << player.bbox.position.y << "\tz: " << player.bbox.position.z;
-		//std::cout << "\nx: " << player.aabb.position.x << "\ty: " << player.aabb.position.y << "\tz: " << player.aabb.position.z;
-		std::cout << "\nspeed: " << moveAcceleration;
-		std::cout << "\nacceleration x: " << acceleration->x << " y: " << acceleration->y << " z: " << acceleration->z;
-		std::cout << "\nvelocity x: " << player.velocity.x << " y: " << player.velocity.y << " z: " << player.velocity.z;
-		std::cout << "\ndt: " << dt;
-#endif // DEBUG
-
-		
-		
-		//std::cout << "\n\nBlock";
-		//std::cout << "\nx: " << block->position.x << "\ty: " << block->position.y << "\tz: " << block->position.z;
-		//std::cout << "\nx: " << block->aabb.position.x << "\ty: " << block->aabb.position.y << "\tz: " << block->aabb.position.z;
+//#ifndef NDEBUG
+//		SetStdOutCursorPosition(0, 0);
+//		std::cout << "                  ";
+//		std::cout << "\n                                                               ";
+//		std::cout << "\n                                                               ";
+//		std::cout << "\n                                                               ";
+//		std::cout << "\n                                                               ";
+//		std::cout << "\n                                                               ";
+//		std::cout << "\n                                                               ";
+//		SetStdOutCursorPosition(0, 0);
+//		std::cout << "Player";
+//		std::cout << "\nx: " << player.bbox.position.x << "\ty: " << player.bbox.position.y << "\tz: " << player.bbox.position.z;
+//		//std::cout << "\nx: " << player.aabb.position.x << "\ty: " << player.aabb.position.y << "\tz: " << player.aabb.position.z;
+//		std::cout << "\nspeed: " << moveAcceleration;
+//		std::cout << "\nacceleration x: " << acceleration->x << " y: " << acceleration->y << " z: " << acceleration->z;
+//		std::cout << "\nvelocity x: " << player.velocity.x << " y: " << player.velocity.y << " z: " << player.velocity.z;
+//		std::cout << "\ndt: " << dt;
+//#endif // DEBUG
 
 		player.update(dt);
 		camera.update();
@@ -338,7 +345,8 @@ private:
 
 		vkResetFences(device, 1, &inFlightFences[currentFrame]);
 
-		if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
+		result = vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]);
+		if (result != VK_SUCCESS) {
 			throw std::runtime_error("failed to submit draw command buffer!");
 		}
 
@@ -410,7 +418,7 @@ private:
 
 	void createWorld() {
 		for (int x = 0; x < 100; x++) {
-			for (int y = 0; y < 20; y++) {
+			for (int y = 0; y < 4; y++) {
 				for (int z = 0; z < 100; z++) {
 					world.addBlock(BlockId::Grass, x, y, z);
 				}
@@ -924,7 +932,7 @@ private:
 
 	void createTextureImages() {
 		for (int i = 1; i < (int)BlockId::NUM_TYPES; i++) {
-			int index = i - 1; // skip air because it has no texture
+			int index = i - 1; // this is the index for the textureImages[] array, not the BlockId's
 			VkBuffer stagingBuffer;
 			VkDeviceMemory stagingBufferMemory;
 
@@ -1116,7 +1124,7 @@ private:
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// create the graphics pipeline
+	// create the graphics pipeline. this is the big one where everything comes together
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	void createGraphicsPipeline() {
 		auto vertShaderCode = readFile("shaders/vert.spv");
@@ -1284,8 +1292,6 @@ private:
 		//
 		//		VK_COMMAND_POOL_CREATE_TRANSIENT_BIT: Hint that command buffers are rerecorded with new commands very often(may change memory allocation behavior)
 		//		VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT : Allow command buffers to be rerecorded individually, without this flag they all have to be reset together
-		//
-		// We will only record the command buffers at the beginning of the program and then execute them many times in the main loop, so we're not going to use either of these flags.
 		VkCommandPoolCreateInfo poolInfo{};
 		poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 		poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
@@ -1299,9 +1305,9 @@ private:
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// create the vertex buffer used to pass vertices into gpu memory
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	void createVertexAndIndexBuffer() {
+	void updateVertexAndIndexBuffer() {
 		for (size_t x = 0; x < 100; x++) {
-			for (size_t y = 0; y < 20; y++) {
+			for (size_t y = 0; y < 4; y++) {
 				for (size_t z = 0; z < 100; z++) {
 					// for each block in the world vector
 					auto blockId = world.getBlock(x, y, z);
@@ -1329,53 +1335,62 @@ private:
 				}
 			}
 		}
+		// set bounds of how far out to render based on what chunk the player is in
+		Vec2XZ playerChunkCoords = { floor(player.position.x) / CHUNK_WIDTH, floor(player.position.z) / CHUNK_WIDTH };
+
+		Vec2XZ lowChunkXZ = { playerChunkCoords.x - renderDistance, playerChunkCoords.z - renderDistance };
+		Vec2XZ highChunkXZ = { playerChunkCoords.x + renderDistance, playerChunkCoords.z + renderDistance };
+
+		// for each chunk around the player within render distance
+		for (int x = lowChunkXZ.x; x < highChunkXZ.x; x++) {
+			for (int z = lowChunkXZ.z; z < highChunkXZ.z; z++) {
+				// get the chunk
+				Chunk* chunk = &world.getChunk(x, z);
+
+				// load it if it isnt already
+				if (!chunk->isLoaded) {
+					chunk->load();
+				}
+
+				// generate its geometry if it doesnt already exist
+				if (chunk->vertices.size() == 0 || chunk->indices.size() == 0) {
+					chunk->generateVerticesAndIndices();
+				}
+
+				auto verts = chunk->vertices;
+				auto inds = chunk->indices;
+
+				// account for the chunk position and store the new verts for later
+				for (int i = 0; i < verts.size(); i++) {
+					Vertex v(verts[i]);
+					v.pos.x += x * CHUNK_WIDTH;
+					v.pos.z += z * CHUNK_WIDTH;
+					vertices.push_back(v);
+				}
+
+				// store the indices for later accounting for the offset into the verts vector
+				for (int i = 0; i < inds.size(); i++) {
+					int ind(inds[i] + vertices.size());
+					indices.push_back(ind);
+				}
+			}
+		}
 
 
 
 		// time to start creating the actual buffer	
 		VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
 
-
-		// We're now using a new stagingBuffer with stagingBufferMemory for mapping and copying the vertex data. 
-		// We're going to use two new buffer usage flags :
-		//
-		//		VK_BUFFER_USAGE_TRANSFER_SRC_BIT: Buffer can be used as source in a memory transfer operation.
-		//		VK_BUFFER_USAGE_TRANSFER_DST_BIT: Buffer can be used as destination in a memory transfer operation.
 		VkBuffer vertexStagingBuffer;
 		VkDeviceMemory vertexStagingBufferMemory;
 		
 		createBuffer(vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertexStagingBuffer, vertexStagingBufferMemory);
 
-		// we need to copy the vertex data to the buffer. This is done by mapping the buffer memory into CPU accessible memory
-		// with vkMapMemory.
-		// This function allows us to access a region of the specified memory resource defined by an offset and size. The offset and 
-		// size here are 0 and bufferInfo.size, respectively. It is also possible to specify the special value VK_WHOLE_SIZE to map
-		// all of the memory. The second to last parameter can be used to specify flags, but there aren't any available yet in the 
-		// current API (1.2) and it is reserved for future use. It must be set to the value 0. The last parameter specifies the
-		// output for the pointer to the mapped memory.
 		void* vertexData;
 		vkMapMemory(device, vertexStagingBufferMemory, 0, vertexBufferSize, 0, &vertexData);
-		memcpy(vertexData, vertices.data(), (size_t)vertexBufferSize); // You can now simply memcpy the vertex data to the mapped memory and unmap it again using vkUnmapMemory.
+		memcpy(vertexData, vertices.data(), (size_t)vertexBufferSize); 
 		vkUnmapMemory(device, vertexStagingBufferMemory);
 
-		// Unfortunately the driver may not immediately copy the data into the buffer memory, for example because of caching. It is 
-		// also possible that writes to the buffer are not visible in the mapped memory yet. There are two ways to deal with that problem:
-		//
-		//		Use a memory heap that is host coherent, indicated with VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-		//		Call vkFlushMappedMemoryRanges after writing to the mapped memory, and call vkInvalidateMappedMemoryRanges before reading from the mapped memory
-		//
-		// We went for the first approach, which ensures that the mapped memory always matches the contents of the allocated memory. 
-		// Do keep in mind that this may lead to slightly worse performance than explicit flushing, but we'll see why that doesn't matter later.
-		// 
-		// Flushing memory ranges or using a coherent memory heap means that the driver will be aware of our writes to the buffer, 
-		// but it doesn't mean that they are actually visible on the GPU yet. The transfer of data to the GPU is an operation that 
-		// happens in the background and the specification simply tells us that it is guaranteed to be complete as of the next call to vkQueueSubmit.
-
-
-		// The vertexBuffer is now allocated from a memory type that is device local, which generally means that we're not able to 
-		// use vkMapMemory. However, we can copy data from the stagingBuffer to the vertexBuffer. We have to indicate that we intend
-		// to do that by specifying the transfer source flag for the stagingBuffer and the transfer destination flag for the 
-		// vertexBuffer, along with the vertex buffer usage flag.
 		createBuffer(vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
 
 		// use copyBuffer() to move the vertex data to the device local buffer
@@ -1426,7 +1441,7 @@ private:
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// This function will generate a new transformation every frame to make the geometry spin around.
+	// This function will generate a new transformation every frame based on the cameras position
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	void updateUniformBuffer(uint32_t currentImage, float dt) {
 		// define the model, view, and projection transformations in the uniform buffer object. 
@@ -1726,7 +1741,7 @@ private:
 			renderPassInfo.renderArea.extent = swapChainExtent;
 
 			std::array<VkClearValue, 2> clearValues{};
-			clearValues[0].color = { 0.0f, 0.0f, 0.0f, 0.0f };
+			clearValues[0].color = { 1.0f, 0.0f, 0.0f, 1.0f };
 			clearValues[1].depthStencil = { 1.0f, 0 };
 
 			renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
@@ -1753,10 +1768,7 @@ private:
 			}
 		}
 	}
-
 	
-
-
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// create the semaphores and fences to use in syncronizing the drawing of frames as well as syncing the CPU and GPU
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

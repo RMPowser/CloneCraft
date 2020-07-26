@@ -76,9 +76,9 @@ struct Vec2 {
 };
 
 struct Vertex {
-	Vec3 pos;
-	ColorRGB color;
-	Vec2 texCoord;
+	Vec3 pos; // size 12 bytes
+	ColorRGB color; // size 12 bytes
+	Vec2 texCoord; // size 8 bytes
 
 	static VkVertexInputBindingDescription getBindingDescription() {
 		VkVertexInputBindingDescription bindingDescription{};
@@ -94,17 +94,17 @@ struct Vertex {
 
 		attributeDescriptions[0].binding = 0;
 		attributeDescriptions[0].location = 0;
-		attributeDescriptions[0].format = VK_FORMAT_R64G64B64_SFLOAT;
+		attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
 		attributeDescriptions[0].offset = offsetof(Vertex, pos);
 
 		attributeDescriptions[1].binding = 0;
 		attributeDescriptions[1].location = 1;
-		attributeDescriptions[1].format = VK_FORMAT_R64G64B64_SFLOAT;
+		attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
 		attributeDescriptions[1].offset = offsetof(Vertex, color);
 
 		attributeDescriptions[2].binding = 0;
 		attributeDescriptions[2].location = 2;
-		attributeDescriptions[2].format = VK_FORMAT_R64G64_SFLOAT;
+		attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
 		attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
 
 		return attributeDescriptions;
@@ -113,15 +113,6 @@ struct Vertex {
 	bool operator==(const Vertex& other) const {
 		return pos == other.pos && color == other.color && texCoord == other.texCoord;
 	}
-
-	/*friend std::size_t hash_value(Vertex const& v) {
-		std::size_t seed = 0;
-		boost::hash_combine(seed, v.pos);
-		boost::hash_combine(seed, v.color);
-		boost::hash_combine(seed, v.texCoord);
-		
-		return seed;
-	}*/
 };
 
 
@@ -134,8 +125,6 @@ namespace std {
 			boost::hash_combine(seed, v.texCoord);
 
 			return seed;
-			
-			//return ((std::hash<Vec3>{}(vertex.pos) ^ (std::hash<Vec3>{}(vertex.color) << 1)) >> 1) ^ (std::hash<Vec2>{}(vertex.texCoord) << 1);
 		}
 	};
 }

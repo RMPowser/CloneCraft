@@ -171,9 +171,12 @@ copy "$(ProjectDir)shaders\*" "$(OutDir)shaders"</Command>
   <ItemGroup>
     <ClCompile Include="Block.cpp" />
     <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="Chunk.cpp" />
     <ClCompile Include="Frustum.cpp" />
+    <ClCompile Include="Layer.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Player.cpp" />
+    <ClCompile Include="World.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\compile.bat" />
@@ -187,10 +190,12 @@ copy "$(ProjectDir)shaders\*" "$(OutDir)shaders"</Command>
     <ClInclude Include="AppConfig.h" />
     <ClInclude Include="Block.h" />
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="Chunk.h" />
     <ClInclude Include="CloneCraftApp.h" />
     <ClInclude Include="Entity.h" />
     <ClInclude Include="Frustum.h" />
     <ClInclude Include="glm.h" />
+    <ClInclude Include="Layer.h" />
     <ClInclude Include="MatrixFunctions.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="UBO.h" />
