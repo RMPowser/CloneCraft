@@ -1,7 +1,7 @@
 #pragma once
 #include "Entity.h"
 #include "World.h"
-#include "AABB.h"
+#include "Vertex.h"
 #include <vector>
 
 
@@ -12,7 +12,7 @@ public:
 
     void update(float dt);
     void collide(World& world, const glm::vec3& vel);
-    glm::vec3 acceleration;
+    Vec3 acceleration;
 
     World* world;
 };

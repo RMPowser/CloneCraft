@@ -104,14 +104,14 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\Ryan\source\repos\CloneCraft\CloneCraft\includes\vulkan\Include;C:\Users\Ryan\source\repos\CloneCraft\CloneCraft\includes\glfw\include;C:\Users\Ryan\source\repos\CloneCraft\CloneCraft\includes\glm;C:\Users\Ryan\source\repos\CloneCraft\CloneCraft\includes\stb-master;C:\Users\Ryan\source\repos\CloneCraft\CloneCraft\includes\tinyobjloader-master;C:\Users\Ryan\source\repos\CloneCraft\CloneCraft\includes\boost</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)CloneCraft\includes\vulkan\Include;$(SolutionDir)CloneCraft\includes\glfw\include;$(SolutionDir)CloneCraft\includes\glm;$(SolutionDir)CloneCraft\includes\stb-master;$(SolutionDir)CloneCraft\includes\tinyobjloader-master;$(SolutionDir)CloneCraft\includes\boost</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <BrowseInformation>true</BrowseInformation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Users\Ryan\source\repos\CloneCraft\CloneCraft\lib\vulkan;C:\Users\Ryan\source\repos\CloneCraft\CloneCraft\lib\glfw;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)CloneCraft\lib\vulkan;$(SolutionDir)CloneCraft\lib\glfw;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Bscmake>

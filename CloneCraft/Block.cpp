@@ -46,30 +46,33 @@ void BlockData::generateBlockData(const std::string& modelPath, const std::strin
 
 	std::unordered_map<Vertex, uint32_t> uniqueVertices{};
 
-	for (auto& shape : shapes) {
-		for (auto& index : shape.mesh.indices) {
+	for (const auto& shape : shapes) {
+		for (const auto& index : shape.mesh.indices) {
 			Vertex vertex{};
 
-			vertex.pos.x = attrib.vertices[3 * index.vertex_index + 0];
-			vertex.pos.y = attrib.vertices[3 * index.vertex_index + 1];
-			vertex.pos.z = attrib.vertices[3 * index.vertex_index + 2];
+			vertex.pos = {
+				attrib.vertices[3 * index.vertex_index + 0],
+				attrib.vertices[3 * index.vertex_index + 1],
+				attrib.vertices[3 * index.vertex_index + 2]
+			};
 
-			vertex.color.r = 1.0f;
-			vertex.color.g = 1.0f;
-			vertex.color.b = 1.0f;
+			vertex.texCoord = {
+				attrib.texcoords[2 * index.texcoord_index + 0],
+				1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
+			};
 
-			vertex.texCoord.x = attrib.texcoords[2 * index.texcoord_index + 0];
-			vertex.texCoord.y = 1.0f - attrib.texcoords[2 * index.texcoord_index + 1]; // flip the y coord
+			vertex.color = { 1.0f, 1.0f, 1.0f };
 
 			if (uniqueVertices.count(vertex) == 0) {
 				uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
 				vertices.push_back(vertex);
 			}
+
 			indices.push_back(uniqueVertices[vertex]);
 		}
 	}
 
-	int size = vertices.size();
+	// int size = vertices.size();
 	
 
 	// load texture.

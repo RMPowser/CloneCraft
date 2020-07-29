@@ -9,7 +9,7 @@ static glm::mat4 makeObjMatrix(Entity& entity) {
     matrix = glm::rotate(matrix, glm::radians(entity.rotation.x), { 1, 0, 0 });
     matrix = glm::rotate(matrix, glm::radians(entity.rotation.y), { 0, 1, 0 });
     matrix = glm::rotate(matrix, glm::radians(entity.rotation.z), { 0, 0, 1 });
-
+       
     matrix = glm::translate(matrix, entity.position);
 
     return matrix;
@@ -30,7 +30,7 @@ static glm::mat4 makeViewMatrix(Camera& camera) {
 static glm::mat4 makeProjectionMatrix(AppConfig config) {
     float x = (float)config.windowX;
     float y = (float)config.windowY;
-    float fov = (float)75;
+    float fov = (float)config.FOV;
 
     return glm::perspective(glm::radians(fov), x / y, 0.1f, 2000.0f);
 }

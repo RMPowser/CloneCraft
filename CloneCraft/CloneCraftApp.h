@@ -37,7 +37,8 @@ bool cameraMat4Updated = false;
 bool playerMat4Updated = false;
 bool firstMouse = true;
 float sensitivity = 0.1f;
-uint8_t renderDistance = 1; // render distance in chunks
+uint8_t renderDistance = 2; // render distance in chunks
+uint8_t ASYNC_NUM_CHUNKS_PER_FRAME = 2; // max number of chunks to load per frame
 
 bool forwardPressed = false;
 bool leftPressed = false;
@@ -98,7 +99,7 @@ class CloneCraftApplication {
 public:
 	CloneCraftApplication(GLFWwindow* _window, AppConfig* _config) :
 	camera(*_config),
-	world(&blockdb) {
+	world(&blockdb, renderDistance, ASYNC_NUM_CHUNKS_PER_FRAME) {
 		config = _config;
 		#ifdef NDEBUG
 		config->validationLayers = { "VK_LAYER_LUNARG_monitor" }; // this is so we still get fps display in release mode.
@@ -114,7 +115,6 @@ public:
 
 	void run() {
 		player.world = &world;
-		//createWorld();
 		initVulkan();
 
 #ifndef NDEBUG
@@ -203,7 +203,7 @@ private:
 		createCommandPool();
 		createTextureImages();
 		createTextureSampler();
-		updateVertexAndIndexBuffer();
+		//updateVertexAndIndexBuffer();
 		createUniformBuffers();
 		createDescriptorPool();
 		createDescriptorSets();
@@ -257,27 +257,34 @@ private:
 			acceleration->y += -moveAcceleration;
 		}
 
-//#ifndef NDEBUG
-//		SetStdOutCursorPosition(0, 0);
-//		std::cout << "                  ";
-//		std::cout << "\n                                                               ";
-//		std::cout << "\n                                                               ";
-//		std::cout << "\n                                                               ";
-//		std::cout << "\n                                                               ";
-//		std::cout << "\n                                                               ";
-//		std::cout << "\n                                                               ";
-//		SetStdOutCursorPosition(0, 0);
-//		std::cout << "Player";
-//		std::cout << "\nx: " << player.bbox.position.x << "\ty: " << player.bbox.position.y << "\tz: " << player.bbox.position.z;
-//		//std::cout << "\nx: " << player.aabb.position.x << "\ty: " << player.aabb.position.y << "\tz: " << player.aabb.position.z;
-//		std::cout << "\nspeed: " << moveAcceleration;
-//		std::cout << "\nacceleration x: " << acceleration->x << " y: " << acceleration->y << " z: " << acceleration->z;
-//		std::cout << "\nvelocity x: " << player.velocity.x << " y: " << player.velocity.y << " z: " << player.velocity.z;
-//		std::cout << "\ndt: " << dt;
-//#endif // DEBUG
 
 		player.update(dt);
 		camera.update();
+
+
+#ifndef NDEBUG
+		SetStdOutCursorPosition(0, 0);
+		std::cout << "                                                               ";
+		std::cout << "\n                                                               ";
+		std::cout << "\n                                                               ";
+		std::cout << "\n                                                               ";
+		std::cout << "\n                                                               ";
+		std::cout << "\n                                                               ";
+		std::cout << "\n                                                               ";
+		SetStdOutCursorPosition(0, 0);
+		std::cout << "Player";
+		std::cout << "\nx: " << player.bbox.position.x << "\ty: " << player.bbox.position.y << "\tz: " << player.bbox.position.z;
+		//std::cout << "\nx: " << player.aabb.position.x << "\ty: " << player.aabb.position.y << "\tz: " << player.aabb.position.z;
+		std::cout << "\nspeed: " << moveAcceleration;
+		std::cout << "\nacceleration x: " << acceleration->x << " y: " << acceleration->y << " z: " << acceleration->z;
+		std::cout << "\nvelocity x: " << player.velocity.x << " y: " << player.velocity.y << " z: " << player.velocity.z;
+		std::cout << "\ndt: " << dt << "\n";
+#endif // DEBUG
+		
+
+		
+
+		world.update(camera, physicalDevice, device, commandPool, graphicsQueue, vertices, vertexBuffer, vertexBufferMemory, indices, indexBuffer, indexBufferMemory);
 	}
 
 	void SetStdOutCursorPosition(short CoordX, short CoordY)
@@ -313,7 +320,7 @@ private:
 		VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
 
 		updateUniformBuffer(imageIndex, dt);
-
+		
 		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 			recreateSwapChain();
 			return;
@@ -328,46 +335,103 @@ private:
 		// Mark the image as now being in use by this frame
 		imagesInFlight[imageIndex] = inFlightFences[currentFrame];
 
-		VkSubmitInfo submitInfo{};
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
+
+		
+
+		// Create the Command Buffer's Begin Info
+		VkCommandBufferBeginInfo cmdBeginInfo = {};
+		cmdBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+		cmdBeginInfo.pInheritanceInfo = nullptr;
+		if (vkBeginCommandBuffer(commandBuffers[imageIndex], &cmdBeginInfo) != VK_SUCCESS) {
+			throw std::runtime_error("failed to begin recording command buffer!");
+		}
+
+		// Setup the Render Pass
+		VkRenderPassBeginInfo rndBeginInfo = {};
+
+		std::array<VkClearValue, 2> clearValues{};
+		clearValues[0].color = { 0.0f, 0.0f, 0.0f, 0.0f };
+		clearValues[1].depthStencil = { 1.0f, 0 };
+
+		rndBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		rndBeginInfo.renderPass = renderPass;
+		rndBeginInfo.framebuffer = swapChainFramebuffers[imageIndex];
+		rndBeginInfo.renderArea.extent = swapChainExtent;
+		rndBeginInfo.clearValueCount = clearValues.size();
+		rndBeginInfo.pClearValues = clearValues.data();
+
+		// Begin the Render Pass
+		vkCmdBeginRenderPass(commandBuffers[imageIndex], &rndBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+		
+
+			vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+			VkBuffer vertexBuffers[] = { vertexBuffer };
+			VkDeviceSize offsets[] = { 0 };
+			vkCmdBindVertexBuffers(commandBuffers[imageIndex], 0, 1, vertexBuffers, offsets);
+
+			vkCmdBindIndexBuffer(commandBuffers[imageIndex], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
+			vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[imageIndex], 0, nullptr);
+
+			vkCmdDrawIndexed(commandBuffers[imageIndex], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+
+
+		// stop the render pass
+		vkCmdEndRenderPass(commandBuffers[imageIndex]);
+
+		// stop the command buffer
+		if (vkEndCommandBuffer(commandBuffers[imageIndex]) != VK_SUCCESS) {
+			throw std::runtime_error("failed to record command buffer!");
+		}
+
+		// setup the queue submit info
+		VkSubmitInfo submitInfo = {};
 		VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
 		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+		VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		submitInfo.waitSemaphoreCount = 1;
 		submitInfo.pWaitSemaphores = waitSemaphores;
 		submitInfo.pWaitDstStageMask = waitStages;
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
-
-		VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
 		submitInfo.signalSemaphoreCount = 1;
 		submitInfo.pSignalSemaphores = signalSemaphores;
 
+		// reset the fence
+		vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT32_MAX);
 		vkResetFences(device, 1, &inFlightFences[currentFrame]);
 
+		// submit queue
 		result = vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]);
 		if (result != VK_SUCCESS) {
 			throw std::runtime_error("failed to submit draw command buffer!");
 		}
 
-		VkPresentInfoKHR presentInfo{};
-		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-		presentInfo.waitSemaphoreCount = 1;
-		presentInfo.pWaitSemaphores = signalSemaphores;
-
+		//Setup the Present Info
+		VkPresentInfoKHR present_info = {};
 		VkSwapchainKHR swapChains[] = { swapChain };
-		presentInfo.swapchainCount = 1;
-		presentInfo.pSwapchains = swapChains;
-		presentInfo.pImageIndices = &imageIndex;
-		presentInfo.pResults = nullptr; // Optional
+		present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+		present_info.waitSemaphoreCount = 1;
+		present_info.pWaitSemaphores = signalSemaphores;
+		present_info.swapchainCount = 1;
+		present_info.pSwapchains = swapChains;
+		present_info.pImageIndices = &imageIndex;
+		present_info.pResults = nullptr; // optional
 
-		result = vkQueuePresentKHR(presentQueue, &presentInfo);
+		//Present onto the surface
+		result = vkQueuePresentKHR(presentQueue, &present_info);
 
+		// Error Check for Swapchain and VSync Changes
 		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
 			framebufferResized = false;
 			recreateSwapChain();
 		} else if (result != VK_SUCCESS) {
 			throw std::runtime_error("failed to present swap chain image!");
+			__debugbreak();
 		}
 
 		// Increment the frame. By using the modulo(%) operator, we ensure that the frame index loops around after every MAX_FRAMES_IN_FLIGHT enqueued frames.
@@ -416,16 +480,6 @@ private:
 		glfwTerminate();
 	}
 
-	void createWorld() {
-		for (int x = 0; x < 100; x++) {
-			for (int y = 0; y < 4; y++) {
-				for (int z = 0; z < 100; z++) {
-					world.addBlock(BlockId::Grass, x, y, z);
-				}
-			}
-		}
-	}
-
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// create an instance of vulkan and assign it to "instance" data member
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -472,9 +526,7 @@ private:
 			std::terminate();
 		}
 	}
-
-	
-
+		
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// populate the struct to use for creating the debug messenger 
 	// parameters: 
@@ -1207,7 +1259,13 @@ private:
 
 		VkPipelineColorBlendAttachmentState colorBlendAttachment{};
 		colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-		colorBlendAttachment.blendEnable = VK_FALSE;
+		colorBlendAttachment.blendEnable = VK_TRUE;
+		colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+		colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+		colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+		colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+		colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+		colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_MAX;
 
 		VkPipelineColorBlendStateCreateInfo colorBlending{};
 		colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -1240,13 +1298,18 @@ private:
 		pipelineInfo.pMultisampleState = &multisampling;
 		pipelineInfo.pDepthStencilState = &depthStencil;
 		pipelineInfo.pColorBlendState = &colorBlending;
+		pipelineInfo.pDynamicState = VK_NULL_HANDLE;
 		pipelineInfo.layout = pipelineLayout;
 		pipelineInfo.renderPass = renderPass;
 		pipelineInfo.subpass = 0;
 		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+		pipelineInfo.basePipelineIndex = -1;
 
-		if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
+		VkResult result = vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline);
+
+		if (result != VK_SUCCESS) {
 			throw std::runtime_error("failed to create graphics pipeline!");
+			__debugbreak();
 		}
 
 		vkDestroyShaderModule(device, fragShaderModule, nullptr);
@@ -1305,121 +1368,84 @@ private:
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// create the vertex buffer used to pass vertices into gpu memory
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	void updateVertexAndIndexBuffer() {
-		for (size_t x = 0; x < 100; x++) {
-			for (size_t y = 0; y < 4; y++) {
-				for (size_t z = 0; z < 100; z++) {
-					// for each block in the world vector
-					auto blockId = world.getBlock(x, y, z);
-					if (blockId == BlockId::Air) {
-						continue;
-					}
-					Vec3 blockPosition = { x, y, z };
+	//void updateVertexAndIndexBuffer() {
+	//	vertices.clear();
+	//	indices.clear();
+	//			
+	//	// for each chunk in the render list
+	//	for (auto& chunkXZ : world.renderableChunksList) {
+	//		// get the chunk
+	//		Chunk* chunk = &world.getChunk(chunkXZ.x, chunkXZ.z);
 
-					// get its data
-					auto verts = blockdb.blockDataFor(blockId).getVertices();
-					auto inds = blockdb.blockDataFor(blockId).getIndices();
+	//		// load it into the world
+	//		world.loadChunk(chunkXZ.x, chunkXZ.z);
 
-					// account for the block position and store the new verts for later
-					for (int i = 0; i < verts.size(); i++) {
-						Vertex v(verts[i]);
-						v.pos += blockPosition;
-						vertices.push_back(v);
-					}
+	//		// get the chunks data
+	//		auto verts = chunk->vertices;
+	//		auto inds = chunk->indices;
 
-					// store the indices for later accounting for the offset into the verts vector
-					for (int i = 0; i < inds.size(); i++) {
-						int ind(inds[i] + vertices.size());
-						indices.push_back(ind);
-					}
-				}
-			}
-		}
-		// set bounds of how far out to render based on what chunk the player is in
-		Vec2XZ playerChunkCoords = { floor(player.position.x) / CHUNK_WIDTH, floor(player.position.z) / CHUNK_WIDTH };
+	//		// save the offset for the indices
+	//		auto offset = vertices.size();
 
-		Vec2XZ lowChunkXZ = { playerChunkCoords.x - renderDistance, playerChunkCoords.z - renderDistance };
-		Vec2XZ highChunkXZ = { playerChunkCoords.x + renderDistance, playerChunkCoords.z + renderDistance };
+	//		// account for the chunk position and store the new vertices for later
+	//		for (int i = 0; i < verts.size(); i++) {
+	//			Vertex v(verts[i]);
+	//			v.pos.x += chunkXZ.x * CHUNK_WIDTH;
+	//			v.pos.z += chunkXZ.z * CHUNK_WIDTH;
+	//			vertices.push_back(v);
+	//		}
 
-		// for each chunk around the player within render distance
-		for (int x = lowChunkXZ.x; x < highChunkXZ.x; x++) {
-			for (int z = lowChunkXZ.z; z < highChunkXZ.z; z++) {
-				// get the chunk
-				Chunk* chunk = &world.getChunk(x, z);
-
-				// load it if it isnt already
-				if (!chunk->isLoaded) {
-					chunk->load();
-				}
-
-				// generate its geometry if it doesnt already exist
-				if (chunk->vertices.size() == 0 || chunk->indices.size() == 0) {
-					chunk->generateVerticesAndIndices();
-				}
-
-				auto verts = chunk->vertices;
-				auto inds = chunk->indices;
-
-				// account for the chunk position and store the new verts for later
-				for (int i = 0; i < verts.size(); i++) {
-					Vertex v(verts[i]);
-					v.pos.x += x * CHUNK_WIDTH;
-					v.pos.z += z * CHUNK_WIDTH;
-					vertices.push_back(v);
-				}
-
-				// store the indices for later accounting for the offset into the verts vector
-				for (int i = 0; i < inds.size(); i++) {
-					int ind(inds[i] + vertices.size());
-					indices.push_back(ind);
-				}
-			}
-		}
+	//		// account for the offset into the vertices vector and store the indices for later
+	//		for (int i = 0; i < inds.size(); i++) {
+	//			auto ind(inds[i] + offset);
+	//			indices.push_back(ind);
+	//		}
+	//	}
 
 
 
-		// time to start creating the actual buffer	
-		VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
+	//	// time to start creating the actual buffer	
+	//	VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
 
-		VkBuffer vertexStagingBuffer;
-		VkDeviceMemory vertexStagingBufferMemory;
-		
-		createBuffer(vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertexStagingBuffer, vertexStagingBufferMemory);
+	//	VkBuffer vertexStagingBuffer;
+	//	VkDeviceMemory vertexStagingBufferMemory;
+	//	
+	//	createBuffer(vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertexStagingBuffer, vertexStagingBufferMemory);
 
-		void* vertexData;
-		vkMapMemory(device, vertexStagingBufferMemory, 0, vertexBufferSize, 0, &vertexData);
-		memcpy(vertexData, vertices.data(), (size_t)vertexBufferSize); 
-		vkUnmapMemory(device, vertexStagingBufferMemory);
+	//	void* vertexData;
+	//	vkMapMemory(device, vertexStagingBufferMemory, 0, vertexBufferSize, 0, &vertexData);
+	//	memcpy(vertexData, vertices.data(), (size_t)vertexBufferSize); 
+	//	vkUnmapMemory(device, vertexStagingBufferMemory);
 
-		createBuffer(vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
+	//	createBuffer(vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
 
-		// use copyBuffer() to move the vertex data to the device local buffer
-		copyBuffer(vertexStagingBuffer, vertexBuffer, vertexBufferSize);
+	//	// use copyBuffer() to move the vertex data to the device local buffer
+	//	copyBuffer(vertexStagingBuffer, vertexBuffer, vertexBufferSize);
 
-		// After copying the data from the staging buffer to the device buffer, we should clean up the staging buffer since it is no longer needed.
-		vkDestroyBuffer(device, vertexStagingBuffer, nullptr);
-		vkFreeMemory(device, vertexStagingBufferMemory, nullptr);
+	//	// After copying the data from the staging buffer to the device buffer, we should clean up the staging buffer since it is no longer needed.
+	//	vkDestroyBuffer(device, vertexStagingBuffer, nullptr);
+	//	vkFreeMemory(device, vertexStagingBufferMemory, nullptr);
 
 
-		// and do the same for the index buffer
-		VkDeviceSize indexBufferSize = sizeof(indices[0]) * indices.size();
+	//	// and do the same for the index buffer
+	//	VkDeviceSize indexBufferSize = sizeof(indices[0]) * indices.size();
 
-		VkBuffer indexStagingBuffer;
-		VkDeviceMemory indexStagingBufferMemory;
-		createBuffer(indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, indexStagingBuffer, indexStagingBufferMemory);
+	//	VkBuffer indexStagingBuffer;
+	//	VkDeviceMemory indexStagingBufferMemory;
+	//	createBuffer(indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, indexStagingBuffer, indexStagingBufferMemory);
 
-		void* indexData;
-		vkMapMemory(device, indexStagingBufferMemory, 0, indexBufferSize, 0, &indexData);
-		memcpy(indexData, indices.data(), (size_t)indexBufferSize);
-		vkUnmapMemory(device, indexStagingBufferMemory);
+	//	void* indexData;
+	//	vkMapMemory(device, indexStagingBufferMemory, 0, indexBufferSize, 0, &indexData);
+	//	memcpy(indexData, indices.data(), (size_t)indexBufferSize);
+	//	vkUnmapMemory(device, indexStagingBufferMemory);
 
-		createBuffer(indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
+	//	createBuffer(indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
 
-		copyBuffer(indexStagingBuffer, indexBuffer, indexBufferSize);
+	//	copyBuffer(indexStagingBuffer, indexBuffer, indexBufferSize);
 
-		vkDestroyBuffer(device, indexStagingBuffer, nullptr);
-		vkFreeMemory(device, indexStagingBufferMemory, nullptr);
-	}
+	//	vkDestroyBuffer(device, indexStagingBuffer, nullptr);
+	//	vkFreeMemory(device, indexStagingBufferMemory, nullptr);
+	//}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// A uniform buffer is a buffer that is made accessible in a read-only fashion to shaders so that the shaders can read constant 
@@ -1483,6 +1509,7 @@ private:
 
 		// create the buffer
 		if (vkCreateBuffer(device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS) {
+			__debugbreak();
 			throw std::runtime_error("failed to create buffer!");
 		}
 
@@ -1498,6 +1525,7 @@ private:
 
 		// allocate the vertex buffer memory
 		if (vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS) {
+			__debugbreak();
 			throw std::runtime_error("failed to allocate buffer memory!");
 		}
 
@@ -1723,49 +1751,6 @@ private:
 
 		if (vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data()) != VK_SUCCESS) {
 			throw std::runtime_error("failed to allocate command buffers!");
-		}
-
-		for (size_t i = 0; i < commandBuffers.size(); i++) {
-			VkCommandBufferBeginInfo beginInfo{};
-			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-
-			if (vkBeginCommandBuffer(commandBuffers[i], &beginInfo) != VK_SUCCESS) {
-				throw std::runtime_error("failed to begin recording command buffer!");
-			}
-
-			VkRenderPassBeginInfo renderPassInfo{};
-			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-			renderPassInfo.renderPass = renderPass;
-			renderPassInfo.framebuffer = swapChainFramebuffers[i];
-			renderPassInfo.renderArea.offset = { 0, 0 };
-			renderPassInfo.renderArea.extent = swapChainExtent;
-
-			std::array<VkClearValue, 2> clearValues{};
-			clearValues[0].color = { 1.0f, 0.0f, 0.0f, 1.0f };
-			clearValues[1].depthStencil = { 1.0f, 0 };
-
-			renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-			renderPassInfo.pClearValues = clearValues.data();
-
-			vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-
-			VkBuffer vertexBuffers[] = { vertexBuffer };
-			VkDeviceSize offsets[] = { 0 };
-			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
-
-			vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-
-			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i], 0, nullptr);
-
-			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
-
-			vkCmdEndRenderPass(commandBuffers[i]);
-
-			if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS) {
-				throw std::runtime_error("failed to record command buffer!");
-			}
 		}
 	}
 	

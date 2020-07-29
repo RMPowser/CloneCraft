@@ -2,6 +2,7 @@
 #include "AppConfig.h"
 #include "Entity.h"
 #include "Frustum.h"
+#include "Vertex.h"
 #include "glm.h"
 
 class Camera : public Entity {

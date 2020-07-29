@@ -10,8 +10,8 @@ enum Planes {
 	Bottom,
 };
 
-float Plane::distanceToPoint(glm::vec3& point) {
-	return glm::dot(point, normal) + distanceToOrigin;
+float Plane::distanceToPoint(Vec3 point) {
+	return Vec3::dot(point, normal) + distanceToOrigin;
 }
 
 void ViewFrustum::update(glm::mat4& mat) {
@@ -52,8 +52,22 @@ void ViewFrustum::update(glm::mat4& mat) {
 										mat[2][3] - mat[2][2] };
 
 	for (auto& plane : m_planes) {
-		float length = glm::length(plane.normal);
+		float length = Vec3::length(plane.normal);
 		plane.normal /= length;
 		plane.distanceToOrigin /= length;
 	}
 }
+
+bool ViewFrustum::isBoxInFrustum(AABB& box) {
+	bool result = true;
+	for (auto& plane : m_planes) {
+		if (plane.distanceToPoint(box.getVPositive(plane.normal)) < 0) {
+			return false;
+		} else if (plane.distanceToPoint(box.getVNegative(plane.normal)) < 0) {
+			result = true;
+		}
+	}
+	return result;
+}
+
+

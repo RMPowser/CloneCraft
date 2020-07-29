@@ -3,8 +3,8 @@
 #include "Block.h"
 
 Player::Player() :
-	Entity({ 85.f, 21.f, 14.f }, { 0.f, 0.f, 0.f }, { 0.3f, 1.f, 0.3f }) {
-	acceleration = glm::vec3(0.f);
+	Entity({ 10000.f, 100.f, 10000.f }, { 89.f, 0.f, 0.f }, { 0.3f, 1.f, 0.3f }) {
+	acceleration = Vec3(0.f);
 }
 
 void Player::update(float dt) {

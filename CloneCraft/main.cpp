@@ -1,7 +1,13 @@
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
+
 #include "CloneCraftApp.h"
 #include "Block.h"
 
 int main() {
+	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+
 	AppConfig config(800, 600, 75, "CloneCraft   :^)", 2, { VK_KHR_SWAPCHAIN_EXTENSION_NAME });
 
 	glfwInit();
