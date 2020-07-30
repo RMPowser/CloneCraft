@@ -8,6 +8,7 @@
 int main() {
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 
+	// todo initialize seed in config?
 	AppConfig config(800, 600, 75, "CloneCraft   :^)", 2, { VK_KHR_SWAPCHAIN_EXTENSION_NAME });
 
 	glfwInit();

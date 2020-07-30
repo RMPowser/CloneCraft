@@ -88,14 +88,14 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\SDKs\VulkanSDK\1.2.135.0\Include;C:\SDKs\glfw-3.3.2.bin.WIN64\include;C:\SDKs\glm;C:\SDKs\stb-master;C:\SDKs\tinyobjloader-master;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)CloneCraft\includes\vulkan\Include;$(SolutionDir)CloneCraft\includes\glfw\include;$(SolutionDir)CloneCraft\includes\glm;$(SolutionDir)CloneCraft\includes\stb-master;$(SolutionDir)CloneCraft\includes\tinyobjloader-master;$(SolutionDir)CloneCraft\includes\boost;$(SolutionDir)CloneCraft\includes\LibNoise\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\SDKs\VulkanSDK\1.2.135.0\Lib32;C:\SDKs\glfw-3.3.2.bin.WIN64\lib-vc2019;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)CloneCraft\lib\vulkan;$(SolutionDir)CloneCraft\lib\glfw;$(SolutionDir)CloneCraft\lib\LibNoise;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;libnoise.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -104,15 +104,17 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)CloneCraft\includes\vulkan\Include;$(SolutionDir)CloneCraft\includes\glfw\include;$(SolutionDir)CloneCraft\includes\glm;$(SolutionDir)CloneCraft\includes\stb-master;$(SolutionDir)CloneCraft\includes\tinyobjloader-master;$(SolutionDir)CloneCraft\includes\boost</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)CloneCraft\includes\vulkan\Include;$(SolutionDir)CloneCraft\includes\glfw\include;$(SolutionDir)CloneCraft\includes\glm;$(SolutionDir)CloneCraft\includes\stb-master;$(SolutionDir)CloneCraft\includes\tinyobjloader-master;$(SolutionDir)CloneCraft\includes\boost;$(SolutionDir)CloneCraft\includes\LibNoise\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <BrowseInformation>true</BrowseInformation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)CloneCraft\lib\vulkan;$(SolutionDir)CloneCraft\lib\glfw;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)CloneCraft\lib\vulkan;$(SolutionDir)CloneCraft\lib\glfw;$(SolutionDir)CloneCraft\lib\LibNoise;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;libnoise.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <PreventDllBinding>
+      </PreventDllBinding>
     </Link>
     <Bscmake>
       <PreserveSbr>true</PreserveSbr>
@@ -183,6 +185,7 @@ copy "$(ProjectDir)shaders\*" "$(OutDir)shaders"</Command>
     <ClCompile Include="Frustum.cpp" />
     <ClCompile Include="Layer.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="noiseutils.cpp" />
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="World.cpp" />
   </ItemGroup>
@@ -205,7 +208,9 @@ copy "$(ProjectDir)shaders\*" "$(OutDir)shaders"</Command>
     <ClInclude Include="glm.h" />
     <ClInclude Include="Layer.h" />
     <ClInclude Include="MatrixFunctions.h" />
+    <ClInclude Include="noiseutils.h" />
     <ClInclude Include="Player.h" />
+    <ClInclude Include="TerrainGenerator.h" />
     <ClInclude Include="UBO.h" />
     <ClInclude Include="Vertex.h" />
     <ClInclude Include="World.h" />

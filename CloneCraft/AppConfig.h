@@ -19,4 +19,5 @@ struct AppConfig {
 	uint32_t maxFramesInFlight; // defines how many frames should be processed concurrently. must be non-zero and positive
 	std::vector<const char*> deviceExtensions;
 	std::vector<const char*> validationLayers;
+	int seed = -1;
 };

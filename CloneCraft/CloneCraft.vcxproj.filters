@@ -34,6 +34,9 @@
     <ClCompile Include="Layer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="noiseutils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\frag.spv">
@@ -96,6 +99,12 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="Layer.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TerrainGenerator.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="noiseutils.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

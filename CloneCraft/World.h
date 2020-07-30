@@ -1,6 +1,7 @@
 #pragma once
 #include "Block.h"
 #include "Camera.h"
+#include "TerrainGenerator.h"
 #include <vector>
 #include <unordered_map>
 
@@ -42,7 +43,7 @@ namespace std {
 
 class World {
 public:
-	World(BlockDatabase* _blockdb, uint8_t _renderDistance, uint8_t _maxChunksPerFrame);
+	World(BlockDatabase* _blockdb, uint8_t _renderDistance, uint8_t _maxChunksPerFrame, int _seed);
 	~World() {}
 
 
@@ -81,6 +82,8 @@ private:
 	bool frustumCullingEnabled = true;
 	uint8_t renderDistance;
 	uint8_t maxChunksPerFrame;
+	TerrainGenerator terrainGenerator;
+	int seed;
 };
 
 

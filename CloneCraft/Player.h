@@ -15,5 +15,7 @@ public:
     Vec3 acceleration;
 
     World* world;
+    bool isOnGround;
+    bool isFlying;
 };
 

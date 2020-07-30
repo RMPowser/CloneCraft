@@ -1,14 +1,22 @@
 #pragma once
 #include "World.h"
 #include "Chunk.h"
-//#define FRUSTUM_CULLING_ENABLED // currently broken
+#ifndef NOISE_STATIC
+#define NOISE_STATIC
+#endif // !NOISE_STATIC
+#include "noise/noise.h"
+#include "noiseutils.h"
+
+//#define FRUSTUM_CULLING_ENABLED // currently broken 
 
 
 std::unordered_map<Vec2XZ, Chunk> chunkMap;
 bool forceVertexUpdate = false;
 
 
-World::World(BlockDatabase* _blockdb, uint8_t _renderDistance, uint8_t _maxChunksPerFrame) {
+World::World(BlockDatabase* _blockdb, uint8_t _renderDistance, uint8_t _maxChunksPerFrame, int _seed) :
+	terrainGenerator(CHUNK_WIDTH),
+	seed(_seed){
 	blockdb = _blockdb;
 	renderDistance = _renderDistance;
 	maxChunksPerFrame = _maxChunksPerFrame;
@@ -142,7 +150,7 @@ void World::updateVisibleList() {
 		}
 	}
 
-	printf("visibleListSize: %d \n", visibleChunksList.size());
+	printf("visibleListSize: %zd \n", visibleChunksList.size());
 }
 
 void World::updateRenderList() {
@@ -184,7 +192,7 @@ void World::updateUnloadList() {
 		}
 	}
 	
-	printf("unloadListSize: %d\n", chunkUnloadList.size());
+	printf("unloadListSize: %zd\n", chunkUnloadList.size());
 	chunkUnloadList.clear();
 }
 
@@ -256,15 +264,28 @@ void World::loadChunk(int x, int z) {
 
 void World::loadChunk(Vec2XZ chunkPos) {
 	Chunk* chunk = &getChunk(chunkPos.x, chunkPos.z);
-
-	// todo: actual terrain generation
-	for (int y = 0; y < 1; y++) {
-		for (int x = 0; x < CHUNK_WIDTH; x++) {
-			for (int z = 0; z < CHUNK_WIDTH; z++) {
-				chunk->setBlock(BlockId::Grass, x, y, z);
-			}
+	
+	// generate the terrain image
+	auto image = terrainGenerator.GetTerrain(chunkPos.x, chunkPos.z, seed);
+	
+	// sample the image at x and z coords to get y coord
+	for (int x = 0; x < CHUNK_WIDTH; x++) {
+		for (int z = 0; z < CHUNK_WIDTH; z++) {
+			int y = image->GetValue(x, z).red;
+			chunk->setBlock(BlockId::Grass, x, y, z);
 		}
 	}
+
+	// generate spheres of dirt....
+	//for (int z = 0; z < CHUNK_WIDTH; z++) {
+	//	for (int y = 0; y < CHUNK_WIDTH; y++) {
+	//		for (int x = 0; x < CHUNK_WIDTH; x++) {
+	//			if (sqrt((float)(x - CHUNK_WIDTH / 2) * (x - CHUNK_WIDTH / 2) + (y - CHUNK_WIDTH / 2) * (y - CHUNK_WIDTH / 2) + (z - CHUNK_WIDTH / 2) * (z - CHUNK_WIDTH / 2)) <= CHUNK_WIDTH / 2) {
+	//				chunk->setBlock(BlockId::Grass, x, y, z);
+	//			}
+	//		}
+	//	}
+	//}
 
 	chunk->generateVerticesAndIndices();
 

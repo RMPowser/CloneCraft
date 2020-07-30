@@ -25,6 +25,9 @@
 #include <algorithm>
 #include <glm/glm.hpp>
 #include <array>
+#include <cmath>
+
+
 
 
 
@@ -32,6 +35,8 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // define globals
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+constexpr auto PI = 3.14159265358979;
+constexpr auto RADIAN = PI / (double)180;
 Player player;
 bool cameraMat4Updated = false;
 bool playerMat4Updated = false;
@@ -46,7 +51,10 @@ bool rightPressed = false;
 bool backPressed = false;
 bool upPressed = false;
 bool downPressed = false;
-float moveAcceleration = 0.2f;
+bool flyToggleNew = false;
+bool flyToggleOld = false;
+bool speedModifierPressed = false;
+float moveAcceleration; // set this in the update function
 
 struct QueueFamilyIndices {
 	std::optional<uint32_t> graphicsFamily;
@@ -99,7 +107,7 @@ class CloneCraftApplication {
 public:
 	CloneCraftApplication(GLFWwindow* _window, AppConfig* _config) :
 	camera(*_config),
-	world(&blockdb, renderDistance, ASYNC_NUM_CHUNKS_PER_FRAME) {
+	world(&blockdb, renderDistance, ASYNC_NUM_CHUNKS_PER_FRAME, _config->seed) {
 		config = _config;
 		#ifdef NDEBUG
 		config->validationLayers = { "VK_LAYER_LUNARG_monitor" }; // this is so we still get fps display in release mode.
@@ -203,7 +211,7 @@ private:
 		createCommandPool();
 		createTextureImages();
 		createTextureSampler();
-		//updateVertexAndIndexBuffer();
+		//updateVertexAndIndexBuffer(); // this happens inside the world object now
 		createUniformBuffers();
 		createDescriptorPool();
 		createDescriptorSets();
@@ -235,27 +243,42 @@ private:
 		auto rotation = &(player.rotation);
 
 		if (forwardPressed) {
-			acceleration->x += -glm::cos(glm::radians(rotation->y + 90)) * moveAcceleration;
-			acceleration->z += -glm::sin(glm::radians(rotation->y + 90)) * moveAcceleration;
+			acceleration->x += -cos(RADIAN * (rotation->y + 90.f)) * moveAcceleration;
+			acceleration->z += -sin(RADIAN * (rotation->y + 90.f)) * moveAcceleration;
 		}
 		if (backPressed) {
-			acceleration->x += glm::cos(glm::radians(rotation->y + 90)) * moveAcceleration;
-			acceleration->z += glm::sin(glm::radians(rotation->y + 90)) * moveAcceleration;
+			acceleration->x += cos(RADIAN * (rotation->y + 90.f)) * moveAcceleration;
+			acceleration->z += sin(RADIAN * (rotation->y + 90.f)) * moveAcceleration;
 		}
 		if (leftPressed) {
-			acceleration->x += -glm::cos(glm::radians(rotation->y)) * moveAcceleration;
-			acceleration->z += -glm::sin(glm::radians(rotation->y)) * moveAcceleration;
+			acceleration->x += -cos(RADIAN * (rotation->y)) * moveAcceleration;
+			acceleration->z += -sin(RADIAN * (rotation->y)) * moveAcceleration;
 		}
 		if (rightPressed) {
-			acceleration->x += glm::cos(glm::radians(rotation->y)) * moveAcceleration;
-			acceleration->z += glm::sin(glm::radians(rotation->y)) * moveAcceleration;
+			acceleration->x += cos(RADIAN * (rotation->y)) * moveAcceleration;
+			acceleration->z += sin(RADIAN * (rotation->y)) * moveAcceleration;
 		}
 		if (upPressed) {
-			acceleration->y += moveAcceleration;
+			if (player.isOnGround && !player.isFlying) {
+				acceleration->y += 0.2 * 60;
+			}
+			else if (player.isFlying) {
+				acceleration->y += moveAcceleration;
+			}
 		}
 		if (downPressed) {
 			acceleration->y += -moveAcceleration;
 		}
+		if (flyToggleNew != flyToggleOld) {
+			player.isFlying = flyToggleNew;
+			flyToggleOld = flyToggleNew;
+		}
+		if (speedModifierPressed) {
+			moveAcceleration = 1;
+		} else {
+			moveAcceleration = 0.2;
+		}
+
 
 
 		player.update(dt);
@@ -352,7 +375,7 @@ private:
 		VkRenderPassBeginInfo rndBeginInfo = {};
 
 		std::array<VkClearValue, 2> clearValues{};
-		clearValues[0].color = { 0.0f, 0.0f, 0.0f, 0.0f };
+		clearValues[0].color = { (70.0f / 255), (160.0f / 255), (255.0f / 255), (255.0f / 255) };
 		clearValues[1].depthStencil = { 1.0f, 0 };
 
 		rndBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -601,7 +624,6 @@ private:
 
 		return true;
 	}
-
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// pick a suitable device with vulkan support
@@ -1366,88 +1388,6 @@ private:
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// create the vertex buffer used to pass vertices into gpu memory
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//void updateVertexAndIndexBuffer() {
-	//	vertices.clear();
-	//	indices.clear();
-	//			
-	//	// for each chunk in the render list
-	//	for (auto& chunkXZ : world.renderableChunksList) {
-	//		// get the chunk
-	//		Chunk* chunk = &world.getChunk(chunkXZ.x, chunkXZ.z);
-
-	//		// load it into the world
-	//		world.loadChunk(chunkXZ.x, chunkXZ.z);
-
-	//		// get the chunks data
-	//		auto verts = chunk->vertices;
-	//		auto inds = chunk->indices;
-
-	//		// save the offset for the indices
-	//		auto offset = vertices.size();
-
-	//		// account for the chunk position and store the new vertices for later
-	//		for (int i = 0; i < verts.size(); i++) {
-	//			Vertex v(verts[i]);
-	//			v.pos.x += chunkXZ.x * CHUNK_WIDTH;
-	//			v.pos.z += chunkXZ.z * CHUNK_WIDTH;
-	//			vertices.push_back(v);
-	//		}
-
-	//		// account for the offset into the vertices vector and store the indices for later
-	//		for (int i = 0; i < inds.size(); i++) {
-	//			auto ind(inds[i] + offset);
-	//			indices.push_back(ind);
-	//		}
-	//	}
-
-
-
-	//	// time to start creating the actual buffer	
-	//	VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
-
-	//	VkBuffer vertexStagingBuffer;
-	//	VkDeviceMemory vertexStagingBufferMemory;
-	//	
-	//	createBuffer(vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertexStagingBuffer, vertexStagingBufferMemory);
-
-	//	void* vertexData;
-	//	vkMapMemory(device, vertexStagingBufferMemory, 0, vertexBufferSize, 0, &vertexData);
-	//	memcpy(vertexData, vertices.data(), (size_t)vertexBufferSize); 
-	//	vkUnmapMemory(device, vertexStagingBufferMemory);
-
-	//	createBuffer(vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
-
-	//	// use copyBuffer() to move the vertex data to the device local buffer
-	//	copyBuffer(vertexStagingBuffer, vertexBuffer, vertexBufferSize);
-
-	//	// After copying the data from the staging buffer to the device buffer, we should clean up the staging buffer since it is no longer needed.
-	//	vkDestroyBuffer(device, vertexStagingBuffer, nullptr);
-	//	vkFreeMemory(device, vertexStagingBufferMemory, nullptr);
-
-
-	//	// and do the same for the index buffer
-	//	VkDeviceSize indexBufferSize = sizeof(indices[0]) * indices.size();
-
-	//	VkBuffer indexStagingBuffer;
-	//	VkDeviceMemory indexStagingBufferMemory;
-	//	createBuffer(indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, indexStagingBuffer, indexStagingBufferMemory);
-
-	//	void* indexData;
-	//	vkMapMemory(device, indexStagingBufferMemory, 0, indexBufferSize, 0, &indexData);
-	//	memcpy(indexData, indices.data(), (size_t)indexBufferSize);
-	//	vkUnmapMemory(device, indexStagingBufferMemory);
-
-	//	createBuffer(indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
-
-	//	copyBuffer(indexStagingBuffer, indexBuffer, indexBufferSize);
-
-	//	vkDestroyBuffer(device, indexStagingBuffer, nullptr);
-	//	vkFreeMemory(device, indexStagingBufferMemory, nullptr);
-	//}
-
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// A uniform buffer is a buffer that is made accessible in a read-only fashion to shaders so that the shaders can read constant 
 	// parameter data. This is another example of a step that you have to perform in a Vulkan program that you wouldn't have to do 
 	// in another graphics API.
@@ -1907,14 +1847,17 @@ void handleKeyboardInput(GLFWwindow* window, int key, int scancode, int action, 
 	if (key == GLFW_KEY_A && action == GLFW_PRESS) { leftPressed = true; }
 	if (key == GLFW_KEY_D && action == GLFW_PRESS) { rightPressed = true; }
 	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) { upPressed = true; }
-	if (key == GLFW_KEY_LEFT_CONTROL && action == GLFW_PRESS) { downPressed = true; }
+	if (key == GLFW_KEY_LEFT_CONTROL && action == GLFW_PRESS && player.isFlying) { downPressed = true; }
+	if (key == GLFW_KEY_F && action == GLFW_PRESS) { flyToggleNew = !flyToggleNew; }
+	if (key == GLFW_KEY_LEFT_SHIFT && action == GLFW_PRESS) { speedModifierPressed = true; }
 
 	if (key == GLFW_KEY_W && action == GLFW_RELEASE) { forwardPressed = false; }
 	if (key == GLFW_KEY_S && action == GLFW_RELEASE) { backPressed = false; }
 	if (key == GLFW_KEY_A && action == GLFW_RELEASE) { leftPressed = false; }
 	if (key == GLFW_KEY_D && action == GLFW_RELEASE) { rightPressed = false; }
 	if (key == GLFW_KEY_SPACE && action == GLFW_RELEASE) { upPressed = false; }
-	if (key == GLFW_KEY_LEFT_CONTROL && action == GLFW_RELEASE) { downPressed = false; }
+	if (key == GLFW_KEY_LEFT_CONTROL && action == GLFW_RELEASE && player.isFlying) { downPressed = false; }
+	if (key == GLFW_KEY_LEFT_SHIFT && action == GLFW_RELEASE) { speedModifierPressed = false; }
 	
 }
 
