@@ -106,7 +106,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)CloneCraft\includes\vulkan\Include;$(SolutionDir)CloneCraft\includes\glfw\include;$(SolutionDir)CloneCraft\includes\glm;$(SolutionDir)CloneCraft\includes\stb-master;$(SolutionDir)CloneCraft\includes\tinyobjloader-master;$(SolutionDir)CloneCraft\includes\boost;$(SolutionDir)CloneCraft\includes\LibNoise\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <BrowseInformation>true</BrowseInformation>
+      <BrowseInformation>false</BrowseInformation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -115,6 +115,7 @@
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;libnoise.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <PreventDllBinding>
       </PreventDllBinding>
+      <ProgramDatabaseFile>$(ProjectDir)$(IntermediateOutputPath)$(TargetName).pdb</ProgramDatabaseFile>
     </Link>
     <Bscmake>
       <PreserveSbr>true</PreserveSbr>
@@ -125,7 +126,9 @@ mkdir  "$(OutDir)textures"
 mkdir "$(OutDir)shaders"
 copy "$(ProjectDir)models\*" "$(OutDir)models"
 copy "$(ProjectDir)textures\*" "$(OutDir)textures"
-copy "$(ProjectDir)shaders\*" "$(OutDir)shaders"</Command>
+copy "$(ProjectDir)shaders\frag.spv" "$(OutDir)shaders"
+copy "$(ProjectDir)shaders\vert.spv" "$(OutDir)shaders"
+copy "$(SolutionDir)README.TXT" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -136,7 +139,7 @@ copy "$(ProjectDir)shaders\*" "$(OutDir)shaders"</Command>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\SDKs\VulkanSDK\1.2.135.0\Include;C:\SDKs\glfw-3.3.2.bin.WIN64\include;C:\SDKs\glm;C:\SDKs\stb-master;C:\SDKs\tinyobjloader-master;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)CloneCraft\includes\vulkan\Include;$(SolutionDir)CloneCraft\includes\glfw\include;$(SolutionDir)CloneCraft\includes\glm;$(SolutionDir)CloneCraft\includes\stb-master;$(SolutionDir)CloneCraft\includes\tinyobjloader-master;$(SolutionDir)CloneCraft\includes\boost;$(SolutionDir)CloneCraft\includes\LibNoise\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -144,8 +147,8 @@ copy "$(ProjectDir)shaders\*" "$(OutDir)shaders"</Command>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\SDKs\VulkanSDK\1.2.135.0\Lib32;C:\SDKs\glfw-3.3.2.bin.WIN64\lib-vc2019;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)CloneCraft\lib\vulkan;$(SolutionDir)CloneCraft\lib\glfw;$(SolutionDir)CloneCraft\lib\LibNoise\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;libnoise.lib%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -156,7 +159,7 @@ copy "$(ProjectDir)shaders\*" "$(OutDir)shaders"</Command>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\Ryan\source\repos\CloneCraft\CloneCraft\includes\vulkan\Include;C:\Users\Ryan\source\repos\CloneCraft\CloneCraft\includes\glfw\include;C:\Users\Ryan\source\repos\CloneCraft\CloneCraft\includes\glm;C:\Users\Ryan\source\repos\CloneCraft\CloneCraft\includes\stb-master;C:\Users\Ryan\source\repos\CloneCraft\CloneCraft\includes\tinyobjloader-master;C:\Users\Ryan\source\repos\CloneCraft\CloneCraft\includes\boost</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)CloneCraft\includes\vulkan\Include;$(SolutionDir)CloneCraft\includes\glfw\include;$(SolutionDir)CloneCraft\includes\glm;$(SolutionDir)CloneCraft\includes\stb-master;$(SolutionDir)CloneCraft\includes\tinyobjloader-master;$(SolutionDir)CloneCraft\includes\boost;$(SolutionDir)CloneCraft\includes\LibNoise\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -164,8 +167,9 @@ copy "$(ProjectDir)shaders\*" "$(OutDir)shaders"</Command>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Users\Ryan\source\repos\CloneCraft\CloneCraft\lib\vulkan;C:\Users\Ryan\source\repos\CloneCraft\CloneCraft\lib\glfw;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)CloneCraft\lib\vulkan;$(SolutionDir)CloneCraft\lib\glfw;$(SolutionDir)CloneCraft\lib\LibNoise\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;libnoise.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ProgramDatabaseFile>$(ProjectDir)$(IntermediateOutputPath)$(TargetName).pdb</ProgramDatabaseFile>
     </Link>
     <PostBuildEvent>
       <Message>
@@ -175,7 +179,9 @@ mkdir  "$(OutDir)textures"
 mkdir "$(OutDir)shaders"
 copy "$(ProjectDir)models\*" "$(OutDir)models"
 copy "$(ProjectDir)textures\*" "$(OutDir)textures"
-copy "$(ProjectDir)shaders\*" "$(OutDir)shaders"</Command>
+copy "$(ProjectDir)shaders\frag.spv" "$(OutDir)shaders"
+copy "$(ProjectDir)shaders\vert.spv" "$(OutDir)shaders"
+copy "$(SolutionDir)README.TXT" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -203,6 +209,7 @@ copy "$(ProjectDir)shaders\*" "$(OutDir)shaders"</Command>
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Chunk.h" />
     <ClInclude Include="CloneCraftApp.h" />
+    <ClInclude Include="Controller.h" />
     <ClInclude Include="Entity.h" />
     <ClInclude Include="Frustum.h" />
     <ClInclude Include="glm.h" />
@@ -210,6 +217,8 @@ copy "$(ProjectDir)shaders\*" "$(OutDir)shaders"</Command>
     <ClInclude Include="MatrixFunctions.h" />
     <ClInclude Include="noiseutils.h" />
     <ClInclude Include="Player.h" />
+    <ClInclude Include="Radian.h" />
+    <ClInclude Include="Ray.h" />
     <ClInclude Include="TerrainGenerator.h" />
     <ClInclude Include="UBO.h" />
     <ClInclude Include="Vertex.h" />

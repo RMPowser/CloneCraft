@@ -5,7 +5,7 @@
 class Layer {
 public:
 	Layer();
-	~Layer() {}
+	~Layer() {};
 
 	BlockId getBlock(int x, int z);
 	bool setBlock(BlockId id, int x, int z);

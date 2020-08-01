@@ -107,5 +107,14 @@
     <ClInclude Include="noiseutils.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="Radian.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Ray.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Controller.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

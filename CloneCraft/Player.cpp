@@ -7,8 +7,8 @@ Player::Player() :
 	acceleration = Vec3(0.f);
 }
 
-void Player::update(float dt) {
-	float vMax = 10.f;
+void Player::update(float dt, Controller controller) {
+	float vMax = 0.5f;
 	float vMin = 0.05f;
 
 	velocity += acceleration;
@@ -16,7 +16,7 @@ void Player::update(float dt) {
 
 	if (!isFlying) {
 		if (!isOnGround) {
-			velocity.y -= 40 * dt;
+			velocity.y -= 50.f * dt ;
 		}
 		isOnGround = false;
 	}
@@ -34,12 +34,11 @@ void Player::update(float dt) {
 	position.z += velocity.z * dt;
 	collide(*world, { 0, 0, velocity.z });
 
-	velocity.x *= (0.95 * (1 - dt));
-	velocity.z *= (0.95 * (1 - dt));
+	velocity.x *= (0.75 * (1 - dt));
+	velocity.z *= (0.75 * (1 - dt));
 	if (isFlying) {
-		velocity.y *= (0.95 * (1 - dt));
+		velocity.y *= (0.75 * (1 - dt));
 	}
-
 
 	if (velocity.x < vMin && velocity.x > -vMin) {
 		velocity.x = 0;

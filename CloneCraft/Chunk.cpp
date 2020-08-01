@@ -51,6 +51,9 @@ bool Chunk::isBlockOutOfBounds(int x, int y, int z) {
 }
 
 void Chunk::generateVerticesAndIndices() {
+	vertices.clear();
+	indices.clear();
+
 	for (int y = 0; y < CHUNK_HEIGHT; y++) {
 		for (int x = 0; x < CHUNK_WIDTH; x++) {
 			for (int z = 0; z < CHUNK_WIDTH; z++) {

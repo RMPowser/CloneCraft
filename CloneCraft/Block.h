@@ -6,6 +6,9 @@
 #include <unordered_map>
 
 struct BlockTexture {
+	~BlockTexture() {
+		delete image;
+	}
 	int width = 1;
 	int height = 1;
 	int numChannels = 1;
@@ -32,9 +35,7 @@ public:
 
 	BlockId& getId() { return id; }
 	BlockTexture& getTexture() { return texture; }
-	std::vector<Vertex>& getVertices() {
-		return vertices; 
-	}
+	std::vector<Vertex>& getVertices() { return vertices; }
 	std::vector<unsigned int>& getIndices() { return indices; }
 	bool isCollidable() { return collidable; }
 

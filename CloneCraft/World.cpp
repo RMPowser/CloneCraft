@@ -27,21 +27,24 @@ void World::update(Camera& cam, VkPhysicalDevice& physicalDevice, VkDevice& devi
 	camChunkCoordsNew = { (int)camPositionNew.x / CHUNK_WIDTH, (int)camPositionNew.z / CHUNK_WIDTH };
 	updateLoadList();
 	
+	// if there is a change in the camera or the frustum
 	if (camPositionOld != camPositionNew || camFrustum != cam.getFrustum()) {
+		// get the newest data
 		camFrustum = cam.getFrustum();
 		camPositionOld = camPositionNew;
-		
-		// if the camera has crossed into a new chunk or a vertex update is being forced by the load list
-		if (camChunkCoordsOld != camChunkCoordsNew || forceVertexUpdate) {
-			camChunkCoordsOld = camChunkCoordsNew;
-			updateVisibleList();
-			updateRenderList();
-			updateUnloadList();
-
-			updateVertexAndIndexBuffer(physicalDevice, device, commandPool, graphicsQueue, vertices, vertexBuffer, vertexBufferMemory, indices, indexBuffer, indexBufferMemory);
-			forceVertexUpdate = false;
-		}
 	}
+
+	// if the camera has crossed into a new chunk or a vertex update is being forced
+	if (camChunkCoordsOld != camChunkCoordsNew || forceVertexUpdate) {
+		camChunkCoordsOld = camChunkCoordsNew;
+		updateVisibleList();
+		updateRenderList();
+		updateUnloadList();
+
+		updateVertexAndIndexBuffer(physicalDevice, device, commandPool, graphicsQueue, vertices, vertexBuffer, vertexBufferMemory, indices, indexBuffer, indexBufferMemory);
+		forceVertexUpdate = false;
+	}
+	
 }
 
 void World::updateLoadList() {
@@ -150,7 +153,7 @@ void World::updateVisibleList() {
 		}
 	}
 
-	printf("visibleListSize: %zd \n", visibleChunksList.size());
+	//printf("visibleListSize: %zd \n", visibleChunksList.size());
 }
 
 void World::updateRenderList() {
@@ -180,7 +183,7 @@ void World::updateUnloadList() {
 		Vec2XZ chunk{ chunkUnloadList[i].x, chunkUnloadList[i].z };
 
 		// if the chunk is currently loaded and the distance to the chunk is greater than the renderDistance on either axis
-		if (getChunk(chunk).isLoaded ) {
+		if (getChunk(chunk).isLoaded) {
 			// unload the chunk
 			unLoadChunk(chunk);
 
@@ -192,8 +195,7 @@ void World::updateUnloadList() {
 		}
 	}
 	
-	printf("unloadListSize: %zd\n", chunkUnloadList.size());
-	chunkUnloadList.clear();
+	//printf("unloadListSize: %zd\n", chunkUnloadList.size());
 }
 
 
@@ -245,23 +247,6 @@ Chunk& World::getChunk(Vec2XZ chunkPos) {
 	return chunkMap[chunkPos];
 }
 
-void World::loadChunk(int x, int z) {
-	Chunk* chunk = &getChunk(x, z);
-
-	// todo: actual terrain generation
-	for (int y = 0; y < 1; y++) {
-		for (int x = 0; x < CHUNK_WIDTH; x++) {
-			for (int z = 0; z < CHUNK_WIDTH; z++) {
-				chunk->setBlock(BlockId::Grass, x, y, z);
-			}
-		}
-	}
-
-	chunk->generateVerticesAndIndices();
-
-	chunk->isLoaded = true;
-}
-
 void World::loadChunk(Vec2XZ chunkPos) {
 	Chunk* chunk = &getChunk(chunkPos.x, chunkPos.z);
 	
@@ -292,12 +277,11 @@ void World::loadChunk(Vec2XZ chunkPos) {
 	chunk->isLoaded = true;
 }
 
-void World::unLoadChunk(int x, int z) {
-	// todo: Save chunk to file eventually
-	if (chunkExistsAt(x, z)) {
-		Vec2XZ key{ x, z };
-		chunkMap.erase(key);
-	}
+void World::updateChunk(Vec2XZ chunkPos) {
+	Chunk* chunk = &getChunk(chunkPos);
+
+	chunk->generateVerticesAndIndices();
+	forceVertexUpdate = true;
 }
 
 void World::unLoadChunk(Vec2XZ chunkPos) {
@@ -457,6 +441,12 @@ void copyBuffer(VkDevice& device, VkCommandPool& commandPool, VkQueue& graphicsQ
 
 
 void World::updateVertexAndIndexBuffer(VkPhysicalDevice& physicalDevice, VkDevice& device, VkCommandPool& commandPool, VkQueue& graphicsQueue, std::vector<Vertex>& vertices, VkBuffer& vertexBuffer, VkDeviceMemory& vertexBufferMemory, std::vector<uint32_t>& indices, VkBuffer& indexBuffer, VkDeviceMemory& indexBufferMemory) {
+	vkDestroyBuffer(device, vertexBuffer, nullptr);
+	vkFreeMemory(device, vertexBufferMemory, nullptr);
+	vkDestroyBuffer(device, indexBuffer, nullptr);
+	vkFreeMemory(device, indexBufferMemory, nullptr);
+
+	
 	vertices.clear();
 	indices.clear();
 
@@ -509,7 +499,6 @@ void World::updateVertexAndIndexBuffer(VkPhysicalDevice& physicalDevice, VkDevic
 	// After copying the data from the staging buffer to the device buffer, we should clean up the staging buffer since it is no longer needed.
 	vkDestroyBuffer(device, vertexStagingBuffer, nullptr);
 	vkFreeMemory(device, vertexStagingBufferMemory, nullptr);
-
 
 	// and do the same for the index buffer
 	VkDeviceSize indexBufferSize = sizeof(indices[0]) * indices.size();

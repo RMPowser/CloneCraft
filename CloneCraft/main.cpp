@@ -16,8 +16,11 @@ int main() {
 	GLFWwindow* window = glfwCreateWindow(config.windowX, config.windowY, config.windowTitle.c_str(), nullptr, nullptr);
 
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	if (glfwRawMouseMotionSupported())
+		glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
 	glfwSetKeyCallback(window, handleKeyboardInput);
 	glfwSetCursorPosCallback(window, handleMouseInput);
+	glfwSetMouseButtonCallback(window, handleMouseButtonInput);
 
 	CloneCraftApplication app(window, &config);
 

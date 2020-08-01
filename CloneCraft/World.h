@@ -53,6 +53,7 @@ public:
 	void updateVisibleList();
 	void updateRenderList();
 	void updateVertexAndIndexBuffer(VkPhysicalDevice& physicalDevice, VkDevice& device, VkCommandPool& commandPool, VkQueue& graphicsQueue, std::vector<Vertex>& vertices, VkBuffer& vertexBuffer, VkDeviceMemory& vertexBufferMemory, std::vector<uint32_t>& indices, VkBuffer& indexBuffer, VkDeviceMemory& indexBufferMemory);
+	void updateChunk(Vec2XZ chunkPos);
 	static Vec2XZ getBlockXZ(int x, int z);
 	static Vec2XZ getChunkXZ(int x, int z);
 	BlockId getBlock(int x, int y, int z);

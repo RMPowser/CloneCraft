@@ -107,6 +107,18 @@ struct Vec3 {
 		return cx + cy + cz;
 	}
 
+	static float distance(Vec3& a, Vec3& b) {
+		float cx = b.x - a.x;
+		float cy = b.y - a.y;
+		float cz = b.z - a.z;
+
+		cx *= cx;
+		cy *= cy;
+		cz *= cz;
+
+		return sqrt(cx + cy + cz);
+	}
+
 	static float length(Vec3& vector) {
 		return sqrt((vector.x * vector.x) + (vector.y * vector.y) + (vector.z * vector.z));
 	}

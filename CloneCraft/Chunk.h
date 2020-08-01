@@ -6,7 +6,7 @@ class Chunk {
 public:
 	Chunk();
 	Chunk(World& _world, Vec2XZ pos);
-	~Chunk() {}
+	~Chunk() {};
 
 	BlockId getBlock(int x, int y, int z);
 	bool setBlock(BlockId id, int x, int y, int z);

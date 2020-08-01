@@ -11,7 +11,7 @@ struct AppConfig {
 		maxFramesInFlight = _maxFramesInFlight;
 		deviceExtensions = _deviceExtensions;
 	}
-	~AppConfig() {}
+	~AppConfig() {};
 	uint32_t windowX;
 	uint32_t windowY;
 	uint32_t FOV;

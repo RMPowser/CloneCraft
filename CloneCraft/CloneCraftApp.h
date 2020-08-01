@@ -9,9 +9,10 @@
 #include "World.h"
 #include "Chunk.h"
 #include "Block.h"
-#include "Vertex.h"
 #include "UBO.h"
 #include "glm.h"
+#include "Ray.h"
+#include "Controller.h"
 #include <chrono>
 #include <iostream>
 #include <fstream>
@@ -35,9 +36,9 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // define globals
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-constexpr auto PI = 3.14159265358979;
-constexpr auto RADIAN = PI / (double)180;
+
 Player player;
+Controller controller;
 bool cameraMat4Updated = false;
 bool playerMat4Updated = false;
 bool firstMouse = true;
@@ -45,16 +46,10 @@ float sensitivity = 0.1f;
 uint8_t renderDistance = 2; // render distance in chunks
 uint8_t ASYNC_NUM_CHUNKS_PER_FRAME = 2; // max number of chunks to load per frame
 
-bool forwardPressed = false;
-bool leftPressed = false;
-bool rightPressed = false;
-bool backPressed = false;
-bool upPressed = false;
-bool downPressed = false;
-bool flyToggleNew = false;
-bool flyToggleOld = false;
-bool speedModifierPressed = false;
+
 float moveAcceleration; // set this in the update function
+float buildRange = 5;
+float jumpHeight = 12; // this just happens to feel like a good number at 60fps
 
 struct QueueFamilyIndices {
 	std::optional<uint32_t> graphicsFamily;
@@ -110,7 +105,7 @@ public:
 	world(&blockdb, renderDistance, ASYNC_NUM_CHUNKS_PER_FRAME, _config->seed) {
 		config = _config;
 		#ifdef NDEBUG
-		config->validationLayers = { "VK_LAYER_LUNARG_monitor" }; // this is so we still get fps display in release mode.
+		config->validationLayers = {};
 		#else
 		config->validationLayers = { "VK_LAYER_KHRONOS_validation", "VK_LAYER_LUNARG_monitor" };
 		#endif
@@ -242,46 +237,100 @@ private:
 		auto acceleration = &(player.acceleration);
 		auto rotation = &(player.rotation);
 
-		if (forwardPressed) {
+		if (controller.forwardPressed) {
 			acceleration->x += -cos(RADIAN * (rotation->y + 90.f)) * moveAcceleration;
 			acceleration->z += -sin(RADIAN * (rotation->y + 90.f)) * moveAcceleration;
 		}
-		if (backPressed) {
+		if (controller.backPressed) {
 			acceleration->x += cos(RADIAN * (rotation->y + 90.f)) * moveAcceleration;
 			acceleration->z += sin(RADIAN * (rotation->y + 90.f)) * moveAcceleration;
 		}
-		if (leftPressed) {
+		if (controller.leftPressed) {
 			acceleration->x += -cos(RADIAN * (rotation->y)) * moveAcceleration;
 			acceleration->z += -sin(RADIAN * (rotation->y)) * moveAcceleration;
 		}
-		if (rightPressed) {
+		if (controller.rightPressed) {
 			acceleration->x += cos(RADIAN * (rotation->y)) * moveAcceleration;
 			acceleration->z += sin(RADIAN * (rotation->y)) * moveAcceleration;
 		}
-		if (upPressed) {
+		if (controller.upPressed) {
 			if (player.isOnGround && !player.isFlying) {
-				acceleration->y += 0.2 * 60;
+				acceleration->y += jumpHeight;
 			}
 			else if (player.isFlying) {
 				acceleration->y += moveAcceleration;
 			}
 		}
-		if (downPressed) {
+		if (controller.downPressed) {
 			acceleration->y += -moveAcceleration;
 		}
-		if (flyToggleNew != flyToggleOld) {
-			player.isFlying = flyToggleNew;
-			flyToggleOld = flyToggleNew;
+		if (controller.flyToggleNew != controller.flyToggleOld) {
+			player.isFlying = controller.flyToggleNew;
+			controller.flyToggleOld = controller.flyToggleNew;
 		}
-		if (speedModifierPressed) {
-			moveAcceleration = 1;
+		if (controller.speedModifierPressed) {
+			moveAcceleration = 1.5;
 		} else {
-			moveAcceleration = 0.2;
+			moveAcceleration = 1;
+		}
+		if (controller.leftClicked) {
+			Vec3 camPosition{};
+			camPosition.x = camera.position.x;
+			camPosition.y = camera.position.y;
+			camPosition.z = camera.position.z;
+
+			for (Ray ray(camPosition, player.rotation); ray.getLength() <= buildRange; ray.step(0.05f)) {
+				int x = static_cast<int>(ray.getEnd().x);
+				int y = static_cast<int>(ray.getEnd().y);
+				int z = static_cast<int>(ray.getEnd().z);
+
+				auto block = world.getBlock(x, y, z);
+
+				if (block != BlockId::Air) {
+					if (world.setBlock(BlockId::Air, x, y, z)) {
+						world.updateChunk(World::getChunkXZ(x, z));
+						break;
+					} else {
+						__debugbreak();
+						throw new std::runtime_error("unable to destroy block!");
+					}
+				}
+			}
+
+			controller.leftClicked = false;
+		}
+		if (controller.rightClicked) {
+			Vec3 camPosition{};
+			camPosition.x = camera.position.x;
+			camPosition.y = camera.position.y;
+			camPosition.z = camera.position.z;
+
+			Vec3 lastRayPosition;
+
+			for (Ray ray(camPosition, player.rotation); ray.getLength() <= buildRange; ray.step(0.05f)) {
+				int x = static_cast<int>(ray.getEnd().x);
+				int y = static_cast<int>(ray.getEnd().y);
+				int z = static_cast<int>(ray.getEnd().z);
+
+				auto block = world.getBlock(x, y, z);
+
+				if (block != BlockId::Air) {
+					if (world.setBlock(BlockId::Grass, lastRayPosition.x, lastRayPosition.y, lastRayPosition.z)) {
+						world.updateChunk(World::getChunkXZ(lastRayPosition.x, lastRayPosition.z));
+						break;
+					} else {
+						__debugbreak();
+						throw new std::runtime_error("unable to destroy block!");
+					}
+				}
+				lastRayPosition = ray.getEnd();
+			}
+			controller.rightClicked = false;
 		}
 
 
 
-		player.update(dt);
+		player.update(dt, controller);
 		camera.update();
 
 
@@ -297,7 +346,6 @@ private:
 		SetStdOutCursorPosition(0, 0);
 		std::cout << "Player";
 		std::cout << "\nx: " << player.bbox.position.x << "\ty: " << player.bbox.position.y << "\tz: " << player.bbox.position.z;
-		//std::cout << "\nx: " << player.aabb.position.x << "\ty: " << player.aabb.position.y << "\tz: " << player.aabb.position.z;
 		std::cout << "\nspeed: " << moveAcceleration;
 		std::cout << "\nacceleration x: " << acceleration->x << " y: " << acceleration->y << " z: " << acceleration->z;
 		std::cout << "\nvelocity x: " << player.velocity.x << " y: " << player.velocity.y << " z: " << player.velocity.z;
@@ -405,6 +453,8 @@ private:
 		// stop the render pass
 		vkCmdEndRenderPass(commandBuffers[imageIndex]);
 
+
+
 		// stop the command buffer
 		if (vkEndCommandBuffer(commandBuffers[imageIndex]) != VK_SUCCESS) {
 			throw std::runtime_error("failed to record command buffer!");
@@ -459,6 +509,8 @@ private:
 
 		// Increment the frame. By using the modulo(%) operator, we ensure that the frame index loops around after every MAX_FRAMES_IN_FLIGHT enqueued frames.
 		currentFrame = (currentFrame + 1) % config->maxFramesInFlight;
+
+
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -881,7 +933,7 @@ private:
 
 	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) {
 		for (const auto& availablePresentMode : availablePresentModes) {
-			if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
+			if (availablePresentMode == VK_PRESENT_MODE_FIFO_KHR) { // VK_PRESENT_MODE_FIFO_KHR is for vsync
 				return availablePresentMode;
 			}
 		}
@@ -1842,22 +1894,23 @@ private:
 };
 
 void handleKeyboardInput(GLFWwindow* window, int key, int scancode, int action, int mods) {
-	if (key == GLFW_KEY_W && action == GLFW_PRESS) { forwardPressed = true; }
-	if (key == GLFW_KEY_S && action == GLFW_PRESS) { backPressed = true; }
-	if (key == GLFW_KEY_A && action == GLFW_PRESS) { leftPressed = true; }
-	if (key == GLFW_KEY_D && action == GLFW_PRESS) { rightPressed = true; }
-	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) { upPressed = true; }
-	if (key == GLFW_KEY_LEFT_CONTROL && action == GLFW_PRESS && player.isFlying) { downPressed = true; }
-	if (key == GLFW_KEY_F && action == GLFW_PRESS) { flyToggleNew = !flyToggleNew; }
-	if (key == GLFW_KEY_LEFT_SHIFT && action == GLFW_PRESS) { speedModifierPressed = true; }
+	if (key == GLFW_KEY_W && action == GLFW_PRESS) { controller.forwardPressed = true; }
+	if (key == GLFW_KEY_S && action == GLFW_PRESS) { controller.backPressed = true; }
+	if (key == GLFW_KEY_A && action == GLFW_PRESS) { controller.leftPressed = true; }
+	if (key == GLFW_KEY_D && action == GLFW_PRESS) { controller.rightPressed = true; }
+	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) { controller.upPressed = true; }
+	if (key == GLFW_KEY_LEFT_CONTROL && action == GLFW_PRESS && player.isFlying) { controller.downPressed = true; }
+	if (key == GLFW_KEY_F && action == GLFW_PRESS) { controller.flyToggleNew = !controller.flyToggleNew; }
+	if (key == GLFW_KEY_LEFT_SHIFT && action == GLFW_PRESS) { controller.speedModifierPressed = true; }
+	
 
-	if (key == GLFW_KEY_W && action == GLFW_RELEASE) { forwardPressed = false; }
-	if (key == GLFW_KEY_S && action == GLFW_RELEASE) { backPressed = false; }
-	if (key == GLFW_KEY_A && action == GLFW_RELEASE) { leftPressed = false; }
-	if (key == GLFW_KEY_D && action == GLFW_RELEASE) { rightPressed = false; }
-	if (key == GLFW_KEY_SPACE && action == GLFW_RELEASE) { upPressed = false; }
-	if (key == GLFW_KEY_LEFT_CONTROL && action == GLFW_RELEASE && player.isFlying) { downPressed = false; }
-	if (key == GLFW_KEY_LEFT_SHIFT && action == GLFW_RELEASE) { speedModifierPressed = false; }
+	if (key == GLFW_KEY_W && action == GLFW_RELEASE) { controller.forwardPressed = false; }
+	if (key == GLFW_KEY_S && action == GLFW_RELEASE) { controller.backPressed = false; }
+	if (key == GLFW_KEY_A && action == GLFW_RELEASE) { controller.leftPressed = false; }
+	if (key == GLFW_KEY_D && action == GLFW_RELEASE) { controller.rightPressed = false; }
+	if (key == GLFW_KEY_SPACE && action == GLFW_RELEASE) { controller.upPressed = false; }
+	if (key == GLFW_KEY_LEFT_CONTROL && action == GLFW_RELEASE && player.isFlying) { controller.downPressed = false; }
+	if (key == GLFW_KEY_LEFT_SHIFT && action == GLFW_RELEASE) { controller.speedModifierPressed = false; }
 	
 }
 
@@ -1893,4 +1946,9 @@ void handleMouseInput(GLFWwindow* window, double xpos, double ypos) {
 
 	lastMouseX = xpos;
 	lastMouseY = ypos;
+}
+
+void handleMouseButtonInput(GLFWwindow* window, int button, int action, int mods) {
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) { controller.leftClicked = true; }
+	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE) { controller.rightClicked = true; }
 }

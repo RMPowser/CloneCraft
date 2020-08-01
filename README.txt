@@ -1,5 +1,7 @@
 Controls:
 	look around    = MOUSE X/Y
+	mine		   = MOUSE LEFT
+	place block    = MOUSE RIGHT
 	move forward   = W
 	strafe left    = A
 	move backward  = S
