@@ -30,14 +30,14 @@ Controls:
 	look around		- MOUSE
 	mine			- MOUSE LEFT
 	place block		- MOUSE RIGHT
-	move forward	- W
+	move forward		- W
 	strafe left		- A
-	move backward	- S
-	strafe right	- D
+	move backward		- S
+	strafe right		- D
 	jump			- SPACE
-	speed modifier	- SHIFT
+	speed modifier		- SHIFT
 	
-	toggle flying	- F
+	toggle flying		- F
 	
 	While Flying:
 		move up    	- SPACE
