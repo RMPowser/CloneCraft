@@ -8,8 +8,8 @@
 int main() {
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 
-	// todo initialize seed in config?
-	AppConfig config(800, 600, 75, "CloneCraft   :^)", 2, { VK_KHR_SWAPCHAIN_EXTENSION_NAME });
+	AppConfig config;
+	config.windowTitle = "CloneCraft   :^)";
 
 	glfwInit();
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -22,10 +22,30 @@ int main() {
 	glfwSetCursorPosCallback(window, handleMouseInput);
 	glfwSetMouseButtonCallback(window, handleMouseButtonInput);
 
-	CloneCraftApplication app(window, &config);
+			#ifndef NDEBUG
+			if (+vulkan.Create(window, 0, config.validationLayers.size(), config.validationLayers.data(), 0, nullptr, config.deviceExtensions.size(), config.deviceExtensions.data(), true))
+			#else
+			if (+vulkan.Create(window, 0))
+			#endif
+			{
+				Renderer renderer(window, vulkan, config);
+				VkClearValue clearValue;
+				clearValue.color = { (70.0f / 255), (160.0f / 255), (255.0f / 255), (255.0f / 255) };
 
-	try {
-		app.run();
+				static auto startTime = std::chrono::high_resolution_clock::now();
+				while (+window.ProcessWindowEvents()) {
+					auto currentTime = std::chrono::high_resolution_clock::now();
+					float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+					startTime = std::chrono::high_resolution_clock::now();
+
+					if (+vulkan.StartFrame(1, &clearValue.color)) {
+						renderer.Render(time);
+						vulkan.EndFrame(true);
+					}
+				}
+			}
+		}
+	
 	} catch (const std::exception& e) {
 		printf("\n%s\n", e.what());
 		system("pause");
