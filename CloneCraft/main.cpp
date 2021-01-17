@@ -7,7 +7,7 @@
 #define GATEWARE_ENABLE_AUDIO
 #define GATEWARE_ENABLE_MATH
 #define GATEWARE_ENABLE_INPUT
-#include "Gateware.h"
+#include "../Gateware/Gateware.h"
 #include "AppConfig.h"
 #include "Renderer.h"
 
