@@ -30,9 +30,9 @@ const char* vertexShaderCode = R"(
 #extension GL_ARB_separate_shader_objects : enable
 
 layout(binding = 0) uniform UniformBufferObject {
-    mat4 model;
-    mat4 view;
-    mat4 proj;
+	mat4 model;
+	mat4 view;
+	mat4 proj;
 } ubo;
 
 layout(location = 0) in vec3 inPosition;
@@ -43,9 +43,9 @@ layout(location = 0) out vec3 fragColor;
 layout(location = 1) out vec2 fragTexCoord;
 
 void main() {
-    gl_Position = ubo.proj * ubo.view * ubo.model * vec4(inPosition, 1.0);
-    fragColor = inColor;
-    fragTexCoord = inTexCoord;
+	gl_Position = ubo.proj * ubo.view * ubo.model * vec4(inPosition, 1.0);
+	fragColor = inColor;
+	fragTexCoord = inTexCoord;
 }
 )";
 
@@ -62,7 +62,7 @@ layout(location = 1) in vec2 fragTexCoord;
 layout(location = 0) out vec4 outColor;
 
 void main() {
-    outColor = texture(texSampler, fragTexCoord);
+	outColor = texture(texSampler, fragTexCoord);
 }
 )";
 
@@ -80,7 +80,9 @@ bool firstMouse = true;
 class Renderer {
 	GW::SYSTEM::GWindow				window;
 	GW::GRAPHICS::GVulkanSurface	vulkan;
-	GW::CORE::GEventReceiver		shutdownTrigger;
+	GW::CORE::GEventReceiver		vulkanEventResponder;
+	GW::INPUT::GBufferedInput		bufferedInput;
+	GW::CORE::GEventReceiver		inputEventResponder;
 
 	VkDevice						device;
 	VkPhysicalDevice				physicalDevice;
@@ -105,7 +107,6 @@ class Renderer {
 	VkSampler						textureSampler;
 	VkQueue							graphicsQueue;
 	VkCommandPool					commandPool;
-	size_t							currentFrame = 0; // keeps track of the current frame. no way! :D
 
 	AppConfig						config;
 	Camera							camera;
@@ -113,10 +114,6 @@ class Renderer {
 	World							world;
 
 
-
-	//VkImage							depthImage;
-	//VkDeviceMemory					depthImageMemory;
-	//VkImageView						depthImageView;
 public:
 	Renderer(GW::SYSTEM::GWindow& _window, GW::GRAPHICS::GVulkanSurface _vulkan, AppConfig _config) :
 	camera(_config),
@@ -396,95 +393,210 @@ public:
 		// in another graphics API.
 		CreateUniformBuffers(swapchainImageCount);
 		
-
 		// create descriptor pool to allocate descriptor sets from
-		// We first need to describe which descriptor types our descriptor sets are going to contain and how many of them, using VkDescriptorPoolSize structures
-		std::array<VkDescriptorPoolSize, 2> poolSizes{};
-		poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		poolSizes[0].descriptorCount = static_cast<uint32_t>(swapchainImageCount);
-		poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		poolSizes[1].descriptorCount = static_cast<uint32_t>(swapchainImageCount);
-		VkDescriptorPoolCreateInfo poolInfo{};
-		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
-		poolInfo.pPoolSizes = poolSizes.data();
-		poolInfo.maxSets = static_cast<uint32_t>(swapchainImageCount);
-		// The structure has an optional flag similar to command pools that determines if individual descriptor sets can be freed or
-		// not: VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT. We're not going to touch the descriptor set after creating it, 
-		// so we don't need this flag. leave flags to its default value of 0.
-		if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
-			throw std::runtime_error("failed to create descriptor pool!");
-		}
+		CreateDescriptorPool(swapchainImageCount);
 
 		// create descriptor sets, one for each swap chain image, all with the same layout
-		std::vector<VkDescriptorSetLayout> layouts(swapchainImageCount, descriptorSetLayout);
-		VkDescriptorSetAllocateInfo allocInfo{};
-		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		allocInfo.descriptorPool = descriptorPool;
-		allocInfo.descriptorSetCount = swapchainImageCount;
-		allocInfo.pSetLayouts = layouts.data();
-		descriptorSets.resize(swapchainImageCount);
-		if (vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data()) != VK_SUCCESS) { // You don't need to explicitly clean up descriptor sets, because they will be automatically freed when the descriptor pool is destroyed. The call to vkAllocateDescriptorSets will allocate descriptor sets, each with one uniform buffer descriptor.
-			throw std::runtime_error("failed to allocate descriptor sets!");
-		}
-		// The descriptor sets have been allocated now, but the descriptors within still need to be configured. We'll now add a loop to populate every descriptor
-		// Descriptors that refer to buffers, like our uniform buffer descriptor, are configured with a VkDescriptorBufferInfo struct. 
-		// This structure specifies the buffer and the region within it that contains the data for the descriptor.
-		for (size_t i = 0; i < swapchainImageCount; i++) {
-			VkDescriptorBufferInfo bufferInfo{};
-			bufferInfo.buffer = uniformBuffers[i];
-			bufferInfo.offset = 0;
-			bufferInfo.range = sizeof(UniformBufferObject);
-			VkDescriptorImageInfo imageInfo{};
-			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			imageInfo.imageView = textureImageViews[0];
-			imageInfo.sampler = textureSampler;
-			std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
-			descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites[0].dstSet = descriptorSets[i];
-			descriptorWrites[0].dstBinding = 0;
-			descriptorWrites[0].dstArrayElement = 0;
-			descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			descriptorWrites[0].descriptorCount = 1;
-			descriptorWrites[0].pBufferInfo = &bufferInfo;
-			descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites[1].dstSet = descriptorSets[i];
-			descriptorWrites[1].dstBinding = 1;
-			descriptorWrites[1].dstArrayElement = 0;
-			descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			descriptorWrites[1].descriptorCount = 1;
-			descriptorWrites[1].pImageInfo = &imageInfo;
-			vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
-		}
+		CreateDescriptorSets(swapchainImageCount);
 
 
 
-		/***************** CLEANUP / SHUTDOWN ******************/
+		/***************** CLEANUP / SHUTDOWN / REBUILD PIPELINE ******************/
 		// GVulkanSurface will inform us when to release any allocated resources and when the swapchain has been recreated
-		shutdownTrigger.Create(vulkan, [&]() {
-			if (+shutdownTrigger.Find(GW::GRAPHICS::GVulkanSurface::Events::RELEASE_RESOURCES, true)) {
+		vulkanEventResponder.Create(vulkan, [&]() {
+			if (+vulkanEventResponder.Find(GW::GRAPHICS::GVulkanSurface::Events::RELEASE_RESOURCES, true)) {
 				CleanUp(); // unlike D3D we must be careful about destroy timing
 			}
-			if (+shutdownTrigger.Find(GW::GRAPHICS::GVulkanSurface::Events::REBUILD_PIPELINE, true)) {
-				CleanUpUniformBuffers(uniformBuffers.size());
+			if (+vulkanEventResponder.Find(GW::GRAPHICS::GVulkanSurface::Events::REBUILD_PIPELINE, true)) {
+				vkDeviceWaitIdle(device);
+				CleanUpUniformBuffers();
+				CleanUpDescriptorPool();
+				// descriptor sets are automatically destroyed when the descriptor pool is
 
 				unsigned int newSwapchainImageCount;
 				vulkan.GetSwapchainImageCount(newSwapchainImageCount);
 				CreateUniformBuffers(newSwapchainImageCount);
+				CreateDescriptorPool(newSwapchainImageCount);
+				CreateDescriptorSets(newSwapchainImageCount);
+			}
+		});
+
+		/***************** INPUT ******************/
+		bufferedInput.Create(window);
+		inputEventResponder.Create(bufferedInput, [&]() {
+			GW::GEvent currentEvent;
+			inputEventResponder.Pop(currentEvent);
+			GW::INPUT::GBufferedInput::Events bufferedInputEvent;
+			GW::INPUT::GBufferedInput::EVENT_DATA bufferedInputEventData;
+			currentEvent.Read(bufferedInputEvent, bufferedInputEventData);
+			switch (bufferedInputEvent) {
+			case GW::INPUT::GBufferedInput::Events::KEYPRESSED:
+				switch (bufferedInputEventData.data) {
+				case G_KEY_W:
+					controller.forwardPressed = true;
+					break;
+				case G_KEY_A:
+					controller.leftPressed = true;
+					break;
+				case G_KEY_S:
+					controller.backPressed = true;
+					break;
+				case G_KEY_D:
+					controller.rightPressed = true;
+					break;
+				case G_KEY_F:
+					controller.flyToggleNew = true;
+					break;
+				case G_KEY_SPACE:
+					controller.upPressed = true;
+					break;
+				case G_KEY_CONTROL:
+					controller.downPressed = true;
+					break;
+				case G_KEY_LEFTSHIFT:
+					controller.speedModifierPressed = true;
+					break;
+				default:
+					break;
+				}
+				break;
+			case GW::INPUT::GBufferedInput::Events::KEYRELEASED:
+				switch (bufferedInputEventData.data) {
+				case G_KEY_W:
+					controller.forwardPressed = false;
+					break;
+				case G_KEY_A:
+					controller.leftPressed = false;
+					break;
+				case G_KEY_S:
+					controller.backPressed = false;
+					break;
+				case G_KEY_D:
+					controller.rightPressed = false;
+					break;
+				case G_KEY_F:
+					controller.flyToggleNew = false;
+					break;
+				case G_KEY_SPACE:
+					controller.upPressed = false;
+					break;
+				case G_KEY_CONTROL:
+					controller.downPressed = false;
+					break;
+				case G_KEY_LEFTSHIFT:
+					controller.speedModifierPressed = false;
+					break;
+				default:
+					break;
+				}
+				break;
+			case GW::INPUT::GBufferedInput::Events::BUTTONPRESSED:
+				switch (bufferedInputEventData.data) {
+				case G_BUTTON_LEFT:
+					controller.leftClicked = true;
+					break;
+				case G_BUTTON_RIGHT:
+					controller.rightClicked = true;
+					break;
+				default:
+					break;
+				}
+				break;
+			case GW::INPUT::GBufferedInput::Events::BUTTONRELEASED:
+				switch (bufferedInputEventData.data) {
+				case G_BUTTON_LEFT:
+					controller.leftClicked = false;
+					break;
+				case G_BUTTON_RIGHT:
+					controller.rightClicked = false;
+					break;
+				default:
+					break;
+				}
+				break;
+			default:
+				break;
 			}
 		});
 	}
 
 	void Render(float deltaTime) {
-		update(deltaTime);
-		drawFrame(deltaTime);
+		uint32_t currentImage;
+		vulkan.GetSwapchainCurrentImage(currentImage);
 
-		VkFence renderFence{};
-		vulkan.GetRenderFence(-1, (void**)renderFence);
+		if (world.verticesAndIndicesUpdated) {
+			world.verticesAndIndicesUpdated = false;
+
+			vkDestroyBuffer(device, vertexBuffer, nullptr);
+			vkFreeMemory(device, vertexBufferMemory, nullptr);
+			vkDestroyBuffer(device, indexBuffer, nullptr);
+			vkFreeMemory(device, indexBufferMemory, nullptr);
+
+			// time to start creating the actual vertex buffer	
+			VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
+
+			VkBuffer vertexStagingBuffer;
+			VkDeviceMemory vertexStagingBufferMemory;
+
+			GvkHelper::create_buffer(physicalDevice, device, vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &vertexStagingBuffer, &vertexStagingBufferMemory);
+			GvkHelper::write_to_buffer(device, vertexStagingBufferMemory, vertices.data(), (unsigned int)vertexBufferSize);
+			GvkHelper::create_buffer(physicalDevice, device, vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vertexBuffer, &vertexBufferMemory);
+			GvkHelper::copy_buffer(device, commandPool, graphicsQueue, vertexStagingBuffer, vertexBuffer, vertexBufferSize);
+
+			vkDestroyBuffer(device, vertexStagingBuffer, nullptr);
+			vkFreeMemory(device, vertexStagingBufferMemory, nullptr);
+
+			// and the index buffer
+			VkDeviceSize indexBufferSize = sizeof(indices[0]) * indices.size();
+
+			VkBuffer indexStagingBuffer;
+			VkDeviceMemory indexStagingBufferMemory;
+
+			GvkHelper::create_buffer(physicalDevice, device, indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &indexStagingBuffer, &indexStagingBufferMemory);
+			GvkHelper::write_to_buffer(device, indexStagingBufferMemory, indices.data(), (unsigned int)indexBufferSize);
+			GvkHelper::create_buffer(physicalDevice, device, indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &indexBuffer, &indexBufferMemory);
+			GvkHelper::copy_buffer(device, commandPool, graphicsQueue, indexStagingBuffer, indexBuffer, indexBufferSize);
+
+			vkDestroyBuffer(device, indexStagingBuffer, nullptr);
+			vkFreeMemory(device, indexStagingBufferMemory, nullptr);
+		}
+
+		updateUniformBuffer(currentImage, deltaTime);
+
+		VkCommandBuffer commandBuffer;
+		vulkan.GetCommandBuffer(-1, (void**)&commandBuffer);
+
+		// what is the current client area dimensions?
+		unsigned int width, height;
+		window.GetClientWidth(width);
+		window.GetClientHeight(height);
+
+		// setup the pipeline's dynamic settings
+		VkViewport viewport;
+		viewport.x = 0;
+		viewport.y = 0;
+		viewport.width = width;
+		viewport.height = height;
+		viewport.minDepth = 0;
+		viewport.maxDepth = 1;
+
+		VkRect2D scissor;
+		scissor.offset = { 0, 0 };
+		scissor.extent = { width, height };
+
+		vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+		VkBuffer vertexBuffers[] = { vertexBuffer };
+		VkDeviceSize offsets[] = { 0 };
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+		vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentImage], 0, nullptr);
+		vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 	}
 
-private:
-	void update(float dt) {
+	void Update(float deltaTime) {
 		auto acceleration = &(player.acceleration);
 		auto rotation = &(player.rotation);
 		float moveAcceleration = config.moveAcceleration;
@@ -584,7 +696,7 @@ private:
 
 
 
-		player.update(dt, controller);
+		player.update(deltaTime, controller);
 		camera.update();
 
 
@@ -612,6 +724,7 @@ private:
 		world.update(camera, vertices, indices);
 	}
 
+private:
 	void SetStdOutCursorPosition(short CoordX, short CoordY)
 		//our function to set the cursor position.
 	{
@@ -622,109 +735,18 @@ private:
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// Function will perform the following operations:
-	//
-	//		Acquire an image from the swap chain
-	//		Execute the command buffer with that image as attachment in the framebuffer
-	//		Return the image to the swap chain for presentation
-	//
-	// Each of these events is set in motion using a single function call, but they are executed asynchronously. The function calls 
-	// will return before the operations are actually finished and the order of execution is also undefined. Unfortunate, because 
-	// each of the operations depends on the previous one finishing. There are two ways of synchronizing swap chain events: fences 
-	// and semaphores. They're both objects that can be used for coordinating operations by having one operation signal and another 
-	// operation wait for a fence or semaphore to go from the unsignaled to signaled state. The difference is that the state of 
-	// fences can be accessed from your program using calls like vkWaitForFences and semaphores cannot be. Fences are mainly designed
-	// to synchronize your application itself with rendering operation, whereas semaphores are used to synchronize operations within
-	// or across command queues. We want to synchronize the queue operations of draw commands and presentation, which makes 
-	// semaphores the best fit.
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	void drawFrame(float dt) {
-		uint32_t currentImage;
-		vulkan.GetSwapchainCurrentImage(currentImage);
-
-		if (world.verticesAndIndicesUpdated) {
-			world.verticesAndIndicesUpdated = false;
-
-			vkDestroyBuffer(device, vertexBuffer, nullptr);
-			vkFreeMemory(device, vertexBufferMemory, nullptr);
-			vkDestroyBuffer(device, indexBuffer, nullptr);
-			vkFreeMemory(device, indexBufferMemory, nullptr);
-
-			// time to start creating the actual vertex and index buffers
-			VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
-
-			VkBuffer vertexStagingBuffer;
-			VkDeviceMemory vertexStagingBufferMemory;
-			GvkHelper::create_buffer(physicalDevice, device, vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &vertexStagingBuffer, &vertexStagingBufferMemory);
-			GvkHelper::write_to_buffer(device, vertexStagingBufferMemory, vertices.data(), (unsigned int)vertexBufferSize);
-
-			GvkHelper::create_buffer(physicalDevice, device, vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vertexBuffer, &vertexBufferMemory);
-
-			// use copyBuffer() to move the vertex data to the device local buffer
-			GvkHelper::copy_buffer(device, commandPool, graphicsQueue, vertexStagingBuffer, vertexBuffer, vertexBufferSize);
-
-			// After copying the data from the staging buffer to the device buffer, we should clean up the staging buffer since it is no longer needed.
-			vkDestroyBuffer(device, vertexStagingBuffer, nullptr);
-			vkFreeMemory(device, vertexStagingBufferMemory, nullptr);
-
-			// and do the same for the index buffer
-			VkDeviceSize indexBufferSize = sizeof(indices[0]) * indices.size();
-
-			VkBuffer indexStagingBuffer;
-			VkDeviceMemory indexStagingBufferMemory;
-			GvkHelper::create_buffer(physicalDevice, device, indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &indexStagingBuffer, &indexStagingBufferMemory);
-			GvkHelper::write_to_buffer(device, indexStagingBufferMemory, vertices.data(), (unsigned int)indexBufferSize);
-
-			GvkHelper::create_buffer(physicalDevice, device, indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &indexBuffer, &indexBufferMemory);
-
-			GvkHelper::copy_buffer(device, commandPool, graphicsQueue, indexStagingBuffer, indexBuffer, indexBufferSize);
-
-			vkDestroyBuffer(device, indexStagingBuffer, nullptr);
-			vkFreeMemory(device, indexStagingBufferMemory, nullptr);
-		}
-		
-
-		updateUniformBuffer(currentImage, dt);
-
-		VkCommandBuffer commandBuffer;
-		vulkan.GetCommandBuffer(currentImage, (void**)&commandBuffer);
-
-		// what is the current client area dimensions?
-		unsigned int width, height;
-		window.GetClientWidth(width);
-		window.GetClientHeight(height);
-
-		// setup the pipeline's dynamic settings
-		VkViewport viewport;
-		viewport.x = 0;
-		viewport.y = 0;
-		viewport.width = width;
-		viewport.height = height;
-		viewport.minDepth = 0;
-		viewport.maxDepth = 1;
-		
-		VkRect2D scissor = { {0, 0}, {width, height} };
-		scissor.offset = { 0, 0 };
-		scissor.extent = { width, height };
-
-		vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-		
-		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-		VkBuffer vertexBuffers[] = { vertexBuffer };
-		VkDeviceSize offsets[] = { 0 };
-		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-		vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentImage], 0, nullptr);
-		vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
-	}
-
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// clean up any memory in reverse order of declaration
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	void CleanUp() {
-		// wait untill everything has completed
+		// wait until everything has completed
 		vkDeviceWaitIdle(device);
+
+		vkDestroyPipeline(device, graphicsPipeline, nullptr);
+		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+
+		CleanUpUniformBuffers();
+
+		vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 
 		vkDestroySampler(device, textureSampler, nullptr);
 		
@@ -743,9 +765,6 @@ private:
 
 		vkDestroyShaderModule(device, vertShaderModule, nullptr);
 		vkDestroyShaderModule(device, fragShaderModule, nullptr);
-
-		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
-		vkDestroyPipeline(device, graphicsPipeline, nullptr);
 	}
 
 	void CreateUniformBuffers(unsigned int _swapchainImageCount) {
@@ -753,12 +772,12 @@ private:
 		uniformBuffers.resize(_swapchainImageCount);
 		uniformBuffersMemory.resize(_swapchainImageCount);
 		for (size_t i = 0; i < _swapchainImageCount; i++) {
-			GvkHelper::create_buffer(physicalDevice, device, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniformBuffers[i], &uniformBuffersMemory[i]);
+			GvkHelper::create_buffer(physicalDevice, device, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &(uniformBuffers[i]), &(uniformBuffersMemory[i]));
 		}
 	}
 
-	void CleanUpUniformBuffers(unsigned int _swapchainImageCount) {
-		for (size_t i = 0; i < _swapchainImageCount; i++) {
+	void CleanUpUniformBuffers() {
+		for (size_t i = 0; i < uniformBuffers.size(); i++) {
 			vkDestroyBuffer(device, uniformBuffers[i], nullptr);
 			vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
 		}
@@ -781,9 +800,72 @@ private:
 
 		// All of the transformations are defined now, so we can copy the data in the uniform buffer object to the current uniform
 		// buffer. This happens in exactly the same way as we did for vertex buffers, except without a staging buffer
-		void* data;
-		vkMapMemory(device, uniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);
-		memcpy(data, &ubo, sizeof(ubo));
-		vkUnmapMemory(device, uniformBuffersMemory[currentImage]);
+		GvkHelper::write_to_buffer(device, uniformBuffersMemory[currentImage], &ubo, sizeof(ubo));
+	}
+
+	void CreateDescriptorPool(unsigned int swapchainImageCount) {
+		// We first need to describe which descriptor types our descriptor sets are going to contain and how many of them, using VkDescriptorPoolSize structures
+		std::array<VkDescriptorPoolSize, 2> poolSizes{};
+		poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		poolSizes[0].descriptorCount = swapchainImageCount;
+		poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		poolSizes[1].descriptorCount = swapchainImageCount;
+		VkDescriptorPoolCreateInfo poolInfo{};
+		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+		poolInfo.pPoolSizes = poolSizes.data();
+		poolInfo.maxSets = swapchainImageCount;
+		// The structure has an optional flag similar to command pools that determines if individual descriptor sets can be freed or
+		// not: VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT. We're not going to touch the descriptor set after creating it, 
+		// so we don't need this flag. leave flags to its default value of 0.
+		if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create descriptor pool!");
+		}
+	}
+
+	void CleanUpDescriptorPool() {
+		vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+	}
+
+	void CreateDescriptorSets(unsigned int swapchainImageCount) {
+		std::vector<VkDescriptorSetLayout> layouts(swapchainImageCount, descriptorSetLayout);
+		VkDescriptorSetAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		allocInfo.descriptorPool = descriptorPool;
+		allocInfo.descriptorSetCount = swapchainImageCount;
+		allocInfo.pSetLayouts = layouts.data();
+		descriptorSets.resize(swapchainImageCount);
+		if (vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data()) != VK_SUCCESS) { // You don't need to explicitly clean up descriptor sets, because they will be automatically freed when the descriptor pool is destroyed. The call to vkAllocateDescriptorSets will allocate descriptor sets, each with one uniform buffer descriptor.
+			throw std::runtime_error("failed to allocate descriptor sets!");
+		}
+		// The descriptor sets have been allocated now, but the descriptors within still need to be configured. We'll now add a loop to populate every descriptor
+		// Descriptors that refer to buffers, like our uniform buffer descriptor, are configured with a VkDescriptorBufferInfo struct. 
+		// This structure specifies the buffer and the region within it that contains the data for the descriptor.
+		for (size_t i = 0; i < swapchainImageCount; i++) {
+			VkDescriptorBufferInfo bufferInfo{};
+			bufferInfo.buffer = uniformBuffers[i];
+			bufferInfo.offset = 0;
+			bufferInfo.range = sizeof(UniformBufferObject);
+			VkDescriptorImageInfo imageInfo{};
+			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			imageInfo.imageView = textureImageViews[0];
+			imageInfo.sampler = textureSampler;
+			std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+			descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrites[0].dstSet = descriptorSets[i];
+			descriptorWrites[0].dstBinding = 0;
+			descriptorWrites[0].dstArrayElement = 0;
+			descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			descriptorWrites[0].descriptorCount = 1;
+			descriptorWrites[0].pBufferInfo = &bufferInfo;
+			descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrites[1].dstSet = descriptorSets[i];
+			descriptorWrites[1].dstBinding = 1;
+			descriptorWrites[1].dstArrayElement = 0;
+			descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			descriptorWrites[1].descriptorCount = 1;
+			descriptorWrites[1].pImageInfo = &imageInfo;
+			vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+		}
 	}
 };

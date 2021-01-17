@@ -59,7 +59,7 @@ void Player::collide(World& world, const glm::vec3& vel) {
 			for (int z = position.z - bbox.dimensions.z; z < position.z + bbox.dimensions.z; z++) {
 				auto block = world.getBlock(x, y, z);
 
-				bool isCollidable = world.blockdb->blockDataFor(block).isCollidable();
+				bool isCollidable = world.blockdb.blockDataFor(block).isCollidable();
 
 				if (isCollidable) {
 					if (vel.y > 0) {

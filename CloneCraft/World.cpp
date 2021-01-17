@@ -14,15 +14,15 @@ std::unordered_map<Vec2XZ, Chunk> chunkMap;
 bool forceVertexUpdate = false;
 
 
-World::World(BlockDatabase* _blockdb, uint8_t _renderDistance, uint8_t _maxChunksPerFrame, int _seed) :
+World::World(BlockDatabase& _blockdb, AppConfig& _config) :
 	terrainGenerator(CHUNK_WIDTH),
-	seed(_seed){
+	seed(_config.seed) {
 	blockdb = _blockdb;
-	renderDistance = _renderDistance;
-	maxChunksPerFrame = _maxChunksPerFrame;
+	renderDistance = _config.renderDistance;
+	maxChunksPerFrame = _config.asyncNumChunksPerFrame;
 }
 
-void World::update(Camera& cam, VkPhysicalDevice& physicalDevice, VkDevice& device, VkCommandPool& commandPool, VkQueue& graphicsQueue, std::vector<Vertex>& vertices, VkBuffer& vertexBuffer, VkDeviceMemory& vertexBufferMemory, std::vector<uint32_t>& indices, VkBuffer& indexBuffer, VkDeviceMemory& indexBufferMemory) {
+void World::update(Camera& cam, std::vector<Vertex>& vertices, std::vector<uint32_t>& indices) {
 	camPositionNew = cam.position;
 	camChunkCoordsNew = { (int)camPositionNew.x / CHUNK_WIDTH, (int)camPositionNew.z / CHUNK_WIDTH };
 	updateLoadList();
@@ -41,7 +41,7 @@ void World::update(Camera& cam, VkPhysicalDevice& physicalDevice, VkDevice& devi
 		updateRenderList();
 		updateUnloadList();
 
-		updateVertexAndIndexBuffer(physicalDevice, device, commandPool, graphicsQueue, vertices, vertexBuffer, vertexBufferMemory, indices, indexBuffer, indexBufferMemory);
+		updateVerticesAndIndices(vertices, indices);
 		forceVertexUpdate = false;
 	}
 	
@@ -314,139 +314,7 @@ bool World::ChunkAlreadyExistsIn(std::vector<Vec2XZ> v, Vec2XZ elem) {
 	return false;
 }
 
-
-
-
-
-
-
-
-
-uint32_t findMemoryType(VkPhysicalDevice& physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties) {
-	// First we need to query info about the available types of memory using vkGetPhysicalDeviceMemoryProperties.
-	// The VkPhysicalDeviceMemoryProperties structure has two arrays memoryTypes and memoryHeaps. Memory heaps are distinct
-	// memory resources like dedicated VRAM and swap space in RAM for when VRAM runs out. The different types of memory exist 
-	// within these heaps. Right now we'll only concern ourselves with the type of memory and not the heap it comes from, but
-	// you can imagine that this can affect performance.
-	VkPhysicalDeviceMemoryProperties memProperties;
-	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
-
-	// find a memory type that is suitable for the buffer itself.
-	// The typeFilter parameter will be used to specify the bit field of memory types that are suitable. That means that we can
-	// find the index of a suitable memory type by simply iterating over them and checking if the corresponding bit is set to 1.
-	// but we also need to be able to write our vertex data to that memory. The memoryTypes array consists of VkMemoryType
-	// structs that specify the heap and properties of each type of memory. The properties define special features of the
-	// memory, like being able to map it so we can write to it from the CPU. This property is indicated with
-	// VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, but we also need to use the VK_MEMORY_PROPERTY_HOST_COHERENT_BIT property. We'll see
-	// why when we map the memory.
-	// We may have more than one desirable property, so we should check if the result of the bitwise AND is not just non-zero, 
-	// but equal to the desired properties bit field. If there is a memory type suitable for the buffer that also has all of 
-	// the properties we need, then we return its index, otherwise we throw an exception.
-	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-		if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
-			return i;
-		}
-	}
-
-	throw std::runtime_error("failed to find suitable memory type!");
-}
-
-void createBuffer(VkPhysicalDevice& physicalDevice, VkDevice& device, VkDeviceSize& size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory) {
-	// Creating a buffer requires us to fill a VkBufferCreateInfo structure. because ofc it does...
-	VkBufferCreateInfo bufferInfo{};
-	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-
-	// size specifies the size of the buffer in bytes.
-	bufferInfo.size = size;
-
-	// usage indicates the purposes the data in the buffer will be used for. It is possible to specify multiple purposes using a bitwise OR.
-	bufferInfo.usage = usage;
-
-	// Just like the images in the swap chain, buffers can also be owned by a specific queue family or be shared between multiple at the same time. For now, the buffer will only be used from the graphics queue, so we can stick to exclusive access.
-	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-	// create the buffer
-	if (vkCreateBuffer(device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS) {
-		__debugbreak();
-		throw std::runtime_error("failed to create buffer!");
-	}
-
-	// query buffer memory requirements
-	VkMemoryRequirements memRequirements;
-	vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
-
-	// use those requirements to findMemoryType for allocation info
-	VkMemoryAllocateInfo allocInfo{};
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = findMemoryType(physicalDevice, memRequirements.memoryTypeBits, properties);
-
-	// allocate the vertex buffer memory
-	if (vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS) {
-		__debugbreak();
-		throw std::runtime_error("failed to allocate buffer memory!");
-	}
-
-	// bind the memory to the buffer. The first three parameters are self-explanatory and the fourth parameter is the offset 
-	// within the region of memory. Since this memory is allocated specifically for this the vertex buffer, the offset is simply
-	// 0. If the offset is non-zero, then it is required to be divisible by memRequirements.alignment.
-	vkBindBufferMemory(device, buffer, bufferMemory, 0);
-}
-
-VkCommandBuffer beginSingleTimeCommands(VkDevice& device, VkCommandPool& commandPool) {
-	VkCommandBufferAllocateInfo allocInfo{};
-	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocInfo.commandPool = commandPool;
-	allocInfo.commandBufferCount = 1;
-
-	VkCommandBuffer commandBuffer;
-	vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
-
-	VkCommandBufferBeginInfo beginInfo{};
-	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-	vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-	return commandBuffer;
-}
-
-void endSingleTimeCommands(VkDevice& device, VkQueue& graphicsQueue, VkCommandPool& commandPool, VkCommandBuffer& commandBuffer) {
-	vkEndCommandBuffer(commandBuffer);
-
-	VkSubmitInfo submitInfo{};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &commandBuffer;
-
-	vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-	vkQueueWaitIdle(graphicsQueue);
-
-	vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
-}
-
-void copyBuffer(VkDevice& device, VkCommandPool& commandPool, VkQueue& graphicsQueue, VkBuffer& srcBuffer, VkBuffer& dstBuffer, VkDeviceSize& size) {
-	VkCommandBuffer commandBuffer = beginSingleTimeCommands(device, commandPool);
-
-	VkBufferCopy copyRegion{};
-	copyRegion.size = size;
-	vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
-
-	endSingleTimeCommands(device, graphicsQueue, commandPool, commandBuffer);
-}
-
-
-
-
-
-void World::updateVertexAndIndexBuffer(VkPhysicalDevice& physicalDevice, VkDevice& device, VkCommandPool& commandPool, VkQueue& graphicsQueue, std::vector<Vertex>& vertices, VkBuffer& vertexBuffer, VkDeviceMemory& vertexBufferMemory, std::vector<uint32_t>& indices, VkBuffer& indexBuffer, VkDeviceMemory& indexBufferMemory) {
-	vkDestroyBuffer(device, vertexBuffer, nullptr);
-	vkFreeMemory(device, vertexBufferMemory, nullptr);
-	vkDestroyBuffer(device, indexBuffer, nullptr);
-	vkFreeMemory(device, indexBufferMemory, nullptr);
-
-	
+void World::updateVerticesAndIndices(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices) {
 	vertices.clear();
 	indices.clear();
 
@@ -476,47 +344,5 @@ void World::updateVertexAndIndexBuffer(VkPhysicalDevice& physicalDevice, VkDevic
 		}
 	}
 
-
-
-	// time to start creating the actual buffer	
-	VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
-
-	VkBuffer vertexStagingBuffer;
-	VkDeviceMemory vertexStagingBufferMemory;
-
-	createBuffer(physicalDevice, device, vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertexStagingBuffer, vertexStagingBufferMemory);
-
-	void* vertexData;
-	vkMapMemory(device, vertexStagingBufferMemory, 0, vertexBufferSize, 0, &vertexData);
-	memcpy(vertexData, vertices.data(), (size_t)vertexBufferSize);
-	vkUnmapMemory(device, vertexStagingBufferMemory);
-
-	createBuffer(physicalDevice, device, vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
-
-	// use copyBuffer() to move the vertex data to the device local buffer
-	copyBuffer(device, commandPool, graphicsQueue, vertexStagingBuffer, vertexBuffer, vertexBufferSize);
-
-	// After copying the data from the staging buffer to the device buffer, we should clean up the staging buffer since it is no longer needed.
-	vkDestroyBuffer(device, vertexStagingBuffer, nullptr);
-	vkFreeMemory(device, vertexStagingBufferMemory, nullptr);
-
-	// and do the same for the index buffer
-	VkDeviceSize indexBufferSize = sizeof(indices[0]) * indices.size();
-
-	VkBuffer indexStagingBuffer;
-	VkDeviceMemory indexStagingBufferMemory;
-	createBuffer(physicalDevice, device, indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, indexStagingBuffer, indexStagingBufferMemory);
-
-	void* indexData;
-	vkMapMemory(device, indexStagingBufferMemory, 0, indexBufferSize, 0, &indexData);
-	memcpy(indexData, indices.data(), (size_t)indexBufferSize);
-	vkUnmapMemory(device, indexStagingBufferMemory);
-
-	createBuffer(physicalDevice, device, indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
-
-	copyBuffer(device, commandPool, graphicsQueue, indexStagingBuffer, indexBuffer, indexBufferSize);
-
-	vkDestroyBuffer(device, indexStagingBuffer, nullptr);
-	vkFreeMemory(device, indexStagingBufferMemory, nullptr);
+	verticesAndIndicesUpdated = true;
 }
-

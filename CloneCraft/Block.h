@@ -6,13 +6,10 @@
 #include <unordered_map>
 
 struct BlockTexture {
-	~BlockTexture() {
-		delete image;
-	}
-	int width = 1;
-	int height = 1;
-	int numChannels = 1;
-	int size = 1;
+	uint32_t width = 1;
+	uint32_t height = 1;
+	uint32_t numChannels = 1;
+	uint32_t size = 1;
 	unsigned char* image = nullptr;
 };
 
@@ -27,7 +24,6 @@ enum class BlockId : uint8_t {
 	NUM_TYPES // always leave this as the last enumeration
 };
 
-
 class BlockData {
 public:
 	BlockData(BlockId _id);
@@ -40,11 +36,11 @@ public:
 	bool isCollidable() { return collidable; }
 
 private:
-	BlockId id;
+	BlockId id = BlockId::Air;
 	BlockTexture texture;
 	std::vector<Vertex> vertices;
 	std::vector<unsigned int> indices;
-	bool collidable;
+	bool collidable = false;
 
 	void generateBlockData(const std::string& modelPath, const std::string& texturePath);
 };
@@ -52,20 +48,14 @@ private:
 
 class BlockDatabase {
 public:
-	BlockDatabase() {
-		blockDatas[0] = new BlockData(BlockId::Air);
-		blockDatas[1] = new BlockData(BlockId::Grass);
-	}
-	~BlockDatabase() {
-		for (auto& blockData : blockDatas) {
-			delete blockData;
-		}
-	}
+	BlockDatabase() {}
+	~BlockDatabase() {}
 
 	BlockData& blockDataFor(BlockId id) {
-		return *blockDatas[(int)id];
+		return blockDatas[(int)id];
 	}
 
 private:
-	std::array<BlockData*, (int)BlockId::NUM_TYPES> blockDatas;
+	BlockData blockDatas[(int)BlockId::NUM_TYPES] = {	BlockData(BlockId::Air), 
+														BlockData(BlockId::Grass) };
 };

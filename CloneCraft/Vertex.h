@@ -7,6 +7,7 @@
 
 struct Vec3 {
 	float x, y, z;
+	
 
 	Vec3() {
 		x = 0;
@@ -279,29 +280,29 @@ struct Mat4 {
 
 
 
-struct ColorRGB {
-	float r, g, b;
-
-	bool operator==(const ColorRGB& other) const {
-		return r == other.r && g == other.g && b == other.b;
-	}
-
-	friend std::size_t hash_value(ColorRGB const& v) {
-		std::size_t seed = 0;
-		boost::hash_combine(seed, v.r);
-		boost::hash_combine(seed, v.g);
-		boost::hash_combine(seed, v.b);
-
-		return seed;
-	}
-
-	ColorRGB& operator+=(const ColorRGB& other) {
-		this->r += other.r;
-		this->g += other.g;
-		this->b += other.b;
-		return *this;
-	}
-};
+//struct ColorRGB {
+//	float r, g, b;
+//
+//	bool operator==(const ColorRGB& other) const {
+//		return r == other.r && g == other.g && b == other.b;
+//	}
+//
+//	friend std::size_t hash_value(ColorRGB const& v) {
+//		std::size_t seed = 0;
+//		boost::hash_combine(seed, v.r);
+//		boost::hash_combine(seed, v.g);
+//		boost::hash_combine(seed, v.b);
+//
+//		return seed;
+//	}
+//
+//	ColorRGB& operator+=(const ColorRGB& other) {
+//		this->r += other.r;
+//		this->g += other.g;
+//		this->b += other.b;
+//		return *this;
+//	}
+//};
 
 struct Vec2 {
 	float x, y;
@@ -327,7 +328,7 @@ struct Vec2 {
 
 struct Vertex {
 	Vec3 pos = { 0.f, 0.f, 0.f }; // size 12 bytes
-	ColorRGB color = { 0.f, 0.f, 0.f }; // size 12 bytes
+	Vec3 color = { 0.f, 0.f, 0.f }; // size 12 bytes
 	Vec2 texCoord = { 0.f, 0.f }; // size 8 bytes
 
 	static VkVertexInputBindingDescription getBindingDescription() {

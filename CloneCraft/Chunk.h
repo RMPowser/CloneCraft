@@ -15,7 +15,7 @@ public:
 
 	std::array<Layer, CHUNK_HEIGHT> layers;
 	Vec2XZ position;
-	const World* world;
+	World* world;
 	bool isLoaded = false;
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;

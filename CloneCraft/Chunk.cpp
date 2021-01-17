@@ -69,8 +69,8 @@ void Chunk::generateVerticesAndIndices() {
 				}
 
 				// get the block's data
-				auto verts = world->blockdb->blockDataFor(blockId).getVertices();
-				auto inds = world->blockdb->blockDataFor(blockId).getIndices();
+				auto verts = world->blockdb.blockDataFor(blockId).getVertices();
+				auto inds = world->blockdb.blockDataFor(blockId).getIndices();
 
 				// save the offset for the indices
 				auto offset = vertices.size();

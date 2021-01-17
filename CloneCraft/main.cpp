@@ -1,36 +1,45 @@
 #define _CRTDBG_MAP_ALLOC
 #include <stdlib.h>
 #include <crtdbg.h>
-
-#include "CloneCraftApp.h"
-#include "Block.h"
+#define GATEWARE_ENABLE_CORE
+#define GATEWARE_ENABLE_SYSTEM
+#define GATEWARE_ENABLE_GRAPHICS
+#define GATEWARE_ENABLE_AUDIO
+#define GATEWARE_ENABLE_MATH
+#define GATEWARE_ENABLE_INPUT
+#include "Gateware.h"
+#include "AppConfig.h"
+#include "Renderer.h"
 
 int main() {
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 
 	AppConfig config;
 	config.windowTitle = "CloneCraft   :^)";
+	config.renderDistance = 8;
 
-	glfwInit();
-	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	GLFWwindow* window = glfwCreateWindow(config.windowX, config.windowY, config.windowTitle.c_str(), nullptr, nullptr);
+	GW::SYSTEM::GWindow window;
+	GW::CORE::GEventReceiver events;
+	GW::GRAPHICS::GVulkanSurface vulkan;
 
-	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-	if (glfwRawMouseMotionSupported())
-		glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
-	glfwSetKeyCallback(window, handleKeyboardInput);
-	glfwSetCursorPosCallback(window, handleMouseInput);
-	glfwSetMouseButtonCallback(window, handleMouseButtonInput);
+	try {
+		if (+window.Create(200, 200, config.windowX, config.windowY, GW::SYSTEM::GWindowStyle::WINDOWEDBORDERED)) {
+			window.SetWindowName(config.windowTitle.c_str());
+			events.Create(window, [&]() {});
+
+			unsigned long long bitmask = GW::GRAPHICS::GGraphicsInitOptions::DEPTH_BUFFER_SUPPORT;
 
 			#ifndef NDEBUG
-			if (+vulkan.Create(window, 0, config.validationLayers.size(), config.validationLayers.data(), 0, nullptr, config.deviceExtensions.size(), config.deviceExtensions.data(), true))
+			if (+vulkan.Create(window, bitmask, config.validationLayers.size(), config.validationLayers.data(), 0, nullptr, config.deviceExtensions.size(), config.deviceExtensions.data(), true))
 			#else
-			if (+vulkan.Create(window, 0))
+			if (+vulkan.Create(window, bitmask))
 			#endif
 			{
 				Renderer renderer(window, vulkan, config);
-				VkClearValue clearValue;
-				clearValue.color = { (70.0f / 255), (160.0f / 255), (255.0f / 255), (255.0f / 255) };
+
+				std::array<VkClearValue, 2> clearValues{};
+				clearValues[0].color = { (70.0f / 255), (160.0f / 255), (255.0f / 255), (255.0f / 255) };
+				clearValues[1].depthStencil = { 1.0f, 0 };
 
 				static auto startTime = std::chrono::high_resolution_clock::now();
 				while (+window.ProcessWindowEvents()) {
@@ -38,7 +47,8 @@ int main() {
 					float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 					startTime = std::chrono::high_resolution_clock::now();
 
-					if (+vulkan.StartFrame(1, &clearValue.color)) {
+					renderer.Update(time);
+					if (+vulkan.StartFrame(clearValues.size(), clearValues.data())) {
 						renderer.Render(time);
 						vulkan.EndFrame(true);
 					}
@@ -52,7 +62,5 @@ int main() {
 		return EXIT_FAILURE;
 	}
 
-	printf("\n");
-	system("pause");
 	return EXIT_SUCCESS;
 }
