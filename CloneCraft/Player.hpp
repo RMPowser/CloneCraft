@@ -11,7 +11,7 @@ public:
 	bool isFlying;
 
     Player() :
-        Entity({ 0, 130, 0, 0 }, { 0, 0, 0, 0 }, { 0.3f, 1.0f, 0.3f, 0.0f, 0.5f, 1.5f, 0.5f, 0.0f })
+        Entity({ 1000, 130, 1000, 0 }, { 0, 0, 0, 0 }, { 0.3f, 1.0f, 0.3f, 0.0f, 0.5f, 1.5f, 0.5f, 0.0f })
     {
         acceleration = GW::MATH::GZeroVectorF;
     }

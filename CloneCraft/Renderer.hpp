@@ -517,7 +517,7 @@ public:
 					float dx = bufferedInputEventData.screenX - controller.lastMouseX;
 					float dy = bufferedInputEventData.screenY - controller.lastMouseY;
 
-					auto rotation = &player.rotation;
+					auto rotation = &(player.rotation);
 
 					rotation->y += dx * AppGlobals::mouseSensitivity;
 					rotation->x += dy * AppGlobals::mouseSensitivity;
@@ -553,6 +553,67 @@ public:
 
 		if (AppGlobals::world.verticesAndIndicesUpdated) {
 			AppGlobals::world.verticesAndIndicesUpdated = false;
+
+			vkDeviceWaitIdle(device);
+
+			vkDestroyBuffer(device, vertexBuffer, nullptr);
+			vkFreeMemory(device, vertexBufferMemory, nullptr);
+			vkDestroyBuffer(device, indexBuffer, nullptr);
+			vkFreeMemory(device, indexBufferMemory, nullptr);
+
+			// time to start creating the actual vertex buffer	
+			VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
+
+			VkBuffer vertexStagingBuffer;
+			VkDeviceMemory vertexStagingBufferMemory;
+
+			GvkHelper::create_buffer(physicalDevice, device, vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &vertexStagingBuffer, &vertexStagingBufferMemory);
+			GvkHelper::write_to_buffer(device, vertexStagingBufferMemory, vertices.data(), (unsigned int)vertexBufferSize);
+			GvkHelper::create_buffer(physicalDevice, device, vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vertexBuffer, &vertexBufferMemory);
+			GvkHelper::copy_buffer(device, commandPool, graphicsQueue, vertexStagingBuffer, vertexBuffer, vertexBufferSize);
+
+			vkDestroyBuffer(device, vertexStagingBuffer, nullptr);
+			vkFreeMemory(device, vertexStagingBufferMemory, nullptr);
+
+			// and the index buffer
+			VkDeviceSize indexBufferSize = sizeof(indices[0]) * indices.size();
+
+			VkBuffer indexStagingBuffer;
+			VkDeviceMemory indexStagingBufferMemory;
+
+			GvkHelper::create_buffer(physicalDevice, device, indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &indexStagingBuffer, &indexStagingBufferMemory);
+			GvkHelper::write_to_buffer(device, indexStagingBufferMemory, indices.data(), (unsigned int)indexBufferSize);
+			GvkHelper::create_buffer(physicalDevice, device, indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &indexBuffer, &indexBufferMemory);
+			GvkHelper::copy_buffer(device, commandPool, graphicsQueue, indexStagingBuffer, indexBuffer, indexBufferSize);
+
+			vkDestroyBuffer(device, indexStagingBuffer, nullptr);
+			vkFreeMemory(device, indexStagingBufferMemory, nullptr);
+		}
+		else // always load the chunk the player is in so we never have a 0 size vertex buffer
+		{
+			auto playerChunkXZ = AppGlobals::world.getChunkXZ(player.position.x, player.position.z);
+			Chunk c = AppGlobals::world.getChunk(playerChunkXZ.x, playerChunkXZ.z);
+
+			if (!c.isLoaded)
+			{
+				AppGlobals::world.initChunk(c);
+			}
+
+			// get the chunks data
+			auto verts = c.vertices;
+			auto inds = c.indices;
+
+			// save the offset for the indices
+			auto offset = vertices.size();
+
+			vertices.insert(vertices.end(), verts.begin(), verts.end());
+
+			// account for the offset into the vertices vector and store the indices for later
+			for (int i = 0; i < inds.size(); i++)
+			{
+				auto ind(inds[i] + offset);
+				indices.push_back(ind);
+			}
 
 			vkDeviceWaitIdle(device);
 

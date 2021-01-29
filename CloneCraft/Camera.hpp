@@ -7,9 +7,9 @@ static GW::MATH::GMATRIXF makeObjMatrix(Entity& entity)
 {
     GW::MATH::GMATRIXF matrix{ GW::MATH::GIdentityMatrixF };
 
-    GW::MATH::GMatrix::RotateXGlobalF(matrix, entity.rotation.x * AppGlobals::RADIAN, matrix);
-    GW::MATH::GMatrix::RotateYGlobalF(matrix, entity.rotation.y * AppGlobals::RADIAN, matrix);
-    GW::MATH::GMatrix::RotateZGlobalF(matrix, entity.rotation.z * AppGlobals::RADIAN, matrix);
+    GW::MATH::GMatrix::RotateXLocalF(matrix, entity.rotation.x * AppGlobals::RADIAN, matrix);
+    GW::MATH::GMatrix::RotateYLocalF(matrix, entity.rotation.y * AppGlobals::RADIAN, matrix);
+    GW::MATH::GMatrix::RotateZLocalF(matrix, entity.rotation.z * AppGlobals::RADIAN, matrix);
 
     GW::MATH::GMatrix::TranslateLocalF(matrix, entity.position, matrix);
 
@@ -20,9 +20,9 @@ static GW::MATH::GMATRIXF makeViewMatrix(Entity& entity)
 {
     GW::MATH::GMATRIXF matrix(GW::MATH::GIdentityMatrixF);
 
-    GW::MATH::GMatrix::RotateXGlobalF(matrix, entity.rotation.x * AppGlobals::RADIAN, matrix);
-    GW::MATH::GMatrix::RotateYGlobalF(matrix, entity.rotation.y * AppGlobals::RADIAN, matrix);
-    GW::MATH::GMatrix::RotateZGlobalF(matrix, entity.rotation.z * AppGlobals::RADIAN, matrix);
+    GW::MATH::GMatrix::RotateXLocalF(matrix, entity.rotation.x * AppGlobals::RADIAN, matrix);
+    GW::MATH::GMatrix::RotateYLocalF(matrix, entity.rotation.y * AppGlobals::RADIAN, matrix);
+    GW::MATH::GMatrix::RotateZLocalF(matrix, entity.rotation.z * AppGlobals::RADIAN, matrix);
 
     GW::MATH::GMatrix::TranslateLocalF(matrix, GW::MATH::GVECTORF{ -entity.position.x, -entity.position.y, -entity.position.z, 0 }, matrix);
 

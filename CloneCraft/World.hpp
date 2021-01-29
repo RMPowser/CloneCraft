@@ -87,6 +87,36 @@ public:
 		return chunkMap[key];
 	}
 
+	void initChunk(Chunk& chunk)
+	{
+		// generate the terrain image
+		TerrainGenerator generator;
+		auto image = generator.GetTerrain(chunk.position.x, chunk.position.z);
+
+		// sample the image at x and z coords to get y coord
+		for (int x = 0; x < AppGlobals::CHUNK_WIDTH; x++)
+		{
+			for (int z = 0; z < AppGlobals::CHUNK_WIDTH; z++)
+			{
+				int y = image->GetValue(x, z).red;
+				chunk.setBlock(BlockId::Grass, x, y, z);
+			}
+		}
+
+		// generate spheres of dirt....
+		//for (int z = 0; z < CHUNK_WIDTH; z++) {
+		//	for (int y = 0; y < CHUNK_WIDTH; y++) {
+		//		for (int x = 0; x < CHUNK_WIDTH; x++) {
+		//			if (sqrt((float)(x - CHUNK_WIDTH / 2) * (x - CHUNK_WIDTH / 2) + (y - CHUNK_WIDTH / 2) * (y - CHUNK_WIDTH / 2) + (z - CHUNK_WIDTH / 2) * (z - CHUNK_WIDTH / 2)) <= CHUNK_WIDTH / 2) {
+		//				chunk->setBlock(BlockId::Grass, x, y, z);
+		//			}
+		//		}
+		//	}
+		//}
+
+		updateChunk(chunk);
+	}
+
 	void updateChunk(Chunk& chunk)
 	{
 		generateVerticesAndIndices(chunk);
@@ -123,23 +153,20 @@ private:
 		{
 			for (float z = lowChunkXZ.z; z <= highChunkXZ.z; z++)
 			{
-				// if the chunk is within render distance
-				if (sqDistanceToChunk(getChunk(x, z)) < sqRenderDistance)
+				Chunk c = getChunk(x, z);
+				// if the chunk is in the view frustum (if frustum culling is enabled)
+				#ifdef FRUSTUM_CULLING_ENABLED 
+				if (camFrustum.isBoxInFrustum(c.bbox))
+					#endif
 				{
-					// if the chunk is in the view frustum (if frustum culling is enabled)
-					#ifdef FRUSTUM_CULLING_ENABLED 
-					if (camFrustum.isBoxInFrustum(c.bbox))
-						#endif
+					// if the chunk is not already loaded
+					if (!c.isLoaded)
 					{
-						// if the chunk is not already loaded
-						if (!getChunk(x, z).isLoaded)
+						// if the chunk is not already in the load list
+						if (!ChunkAlreadyExistsIn(chunkLoadList, c))
 						{
-							// if the chunk is not already in the load list
-							if (!ChunkAlreadyExistsIn(chunkLoadList, getChunk(x, z)))
-							{
-								// put the chunk into the load list
-								chunkLoadList.push_back(getChunk(x, z));
-							}
+							// put the chunk into the load list
+							chunkLoadList.push_back(c);
 						}
 					}
 				}
@@ -152,17 +179,18 @@ private:
 			// if we havent hit the chunk load limit per frame
 			if (numOfChunksLoaded != AppGlobals::asyncNumChunksPerFrame)
 			{
+				Chunk c = chunkLoadList[i];
 				// load the chunk
-				initChunk(chunkLoadList[i]);
+				initChunk(c);
 
 				// Increase the chunks loaded count
 				numOfChunksLoaded++;
 
 				// if the chunk is not already in the renderable list
-				if (!ChunkAlreadyExistsIn(renderableChunksList, chunkLoadList[i]))
+				if (!ChunkAlreadyExistsIn(renderableChunksList, c))
 				{
 					// add the chunk to the renderable chunk list because it is able to be seen by the player
-					renderableChunksList.push_back(chunkLoadList[i]);
+					renderableChunksList.push_back(c);
 
 					// remove the chunk from the load list since it is now loaded
 					chunkLoadList.erase(chunkLoadList.begin() + i);
@@ -188,8 +216,11 @@ private:
 		// for each chunk in the render list
 		for (int i = 0; i < renderableChunksList.size(); i++)
 		{
-			// if the chunk is not within render distance
-			if (sqDistanceToChunk(renderableChunksList[i]) > sqRenderDistance)
+			Chunk c = renderableChunksList[i];
+			// if the distance to the chunk is greater than renderDistance on either axis
+			auto xDistance = abs(camChunkCoordsNew.x - c.position.x);
+			auto zDistance = abs(camChunkCoordsNew.z - c.position.z);
+			if (xDistance > AppGlobals::renderDistance || zDistance > AppGlobals::renderDistance)
 			{
 				// add the chunk to the unload list because its out of render distance
 				chunkUnloadList.push_back(renderableChunksList[i]);
@@ -217,36 +248,6 @@ private:
 			// subtract 1 from the index since the container size changed
 			i--;
 		}
-	}
-
-	void initChunk(Chunk& chunk) 
-	{
-		// generate the terrain image
-		TerrainGenerator generator;
-		auto image = generator.GetTerrain(chunk.position.x, chunk.position.z);
-
-		// sample the image at x and z coords to get y coord
-		for (int x = 0; x < AppGlobals::CHUNK_WIDTH; x++)
-		{
-			for (int z = 0; z < AppGlobals::CHUNK_WIDTH; z++)
-			{
-				int y = image->GetValue(x, z).red;
-				chunk.setBlock(BlockId::Grass, x, y, z);
-			}
-		}
-
-		// generate spheres of dirt....
-		//for (int z = 0; z < CHUNK_WIDTH; z++) {
-		//	for (int y = 0; y < CHUNK_WIDTH; y++) {
-		//		for (int x = 0; x < CHUNK_WIDTH; x++) {
-		//			if (sqrt((float)(x - CHUNK_WIDTH / 2) * (x - CHUNK_WIDTH / 2) + (y - CHUNK_WIDTH / 2) * (y - CHUNK_WIDTH / 2) + (z - CHUNK_WIDTH / 2) * (z - CHUNK_WIDTH / 2)) <= CHUNK_WIDTH / 2) {
-		//				chunk->setBlock(BlockId::Grass, x, y, z);
-		//			}
-		//		}
-		//	}
-		//}
-
-		updateChunk(chunk);
 	}
 
 	void unLoadChunk(Chunk& chunk)
