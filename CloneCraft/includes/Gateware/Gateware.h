@@ -270,7 +270,7 @@ namespace GW
 				};
 				float data[4];
 			};
-
+			
 			inline const GVECTORF xy() const
 			{
 				return GVECTORF{{{this->x, this->y, 0.0f, 0.0f}}};
@@ -24177,7 +24177,12 @@ namespace GW
 				NO_COLLISION = 0,			/*< There is no collision between two objects >*/
 				COLLISION = 1				/*< There is a collision between two objects >*/
 			};
-			// float			static GReturn ConvertAABBCEToAABBMMF(const MATH::GAABBCEF _aabbCE, MATH::GAABBMMF& _outAABBMM) { return GReturn::NO_IMPLEMENTATION; }			static GReturn ConvertAABBMMToAABBCEF(const MATH::GAABBMMF _aabbMM, MATH::GAABBCEF& _outAABCE) { return GReturn::NO_IMPLEMENTATION; }			static GReturn ComputePlaneF(const MATH::GVECTORF _planePositionA, const MATH::GVECTORF _planePositionB, const MATH::GVECTORF _planePositionC, MATH::GPLANEF& _outPlane) { return GReturn::NO_IMPLEMENTATION; }			static GReturn IsTriangleF(const MATH::GTRIANGLEF _triangle, int& _outResult) { return GReturn::NO_IMPLEMENTATION; }
+
+			// float
+			static GReturn ConvertAABBCEToAABBMMF(const MATH::GAABBCEF _aabbCE, MATH::GAABBMMF& _outAABBMM) { return GReturn::NO_IMPLEMENTATION; }
+			static GReturn ConvertAABBMMToAABBCEF(const MATH::GAABBMMF _aabbMM, MATH::GAABBCEF& _outAABCE) { return GReturn::NO_IMPLEMENTATION; }
+			static GReturn ComputePlaneF(const MATH::GVECTORF _planePositionA, const MATH::GVECTORF _planePositionB, const MATH::GVECTORF _planePositionC, MATH::GPLANEF& _outPlane) { return GReturn::NO_IMPLEMENTATION; }
+			static GReturn IsTriangleF(const MATH::GTRIANGLEF _triangle, int& _outResult) { return GReturn::NO_IMPLEMENTATION; }
 			static GReturn TestPointToConvexPolygonF(const MATH::GVECTORF _queryPoint, const MATH::GVECTORF* _polygonPoints, const unsigned int _pointsCount, int& _outResult) { return GReturn::NO_IMPLEMENTATION; }
 			static GReturn ClosestPointToLineF(const MATH::GLINEF _line, const MATH::GVECTORF _queryPoint, MATH::GVECTORF& _outPoint) { return GReturn::NO_IMPLEMENTATION; }
 			static GReturn ClosestPointsToLineFromLineF(const MATH::GLINEF _line1, const MATH::GLINEF _line2, MATH::GVECTORF& _outPoint1, MATH::GVECTORF& _outPoint2) { return GReturn::NO_IMPLEMENTATION; }
@@ -24261,8 +24266,10 @@ namespace GW
 			static GReturn SqDistancePointToCapsuleF(const MATH::GVECTORF _point, const MATH::GCAPSULEF _capsule, float& _outDistance) { return GReturn::NO_IMPLEMENTATION; }
 			static GReturn SqDistancePointToAABBF(const MATH::GVECTORF _point, const MATH::GAABBMMF _aabb, float& _outDistance) { return GReturn::NO_IMPLEMENTATION; }
 			static GReturn SqDistancePointToOBBF(const MATH::GVECTORF _point, const MATH::GOBBF _obb, float& _outDistance) { return GReturn::NO_IMPLEMENTATION; }
-			static GReturn BarycentricF(const MATH::GVECTORF _a, const MATH::GVECTORF _b, const MATH::GVECTORF _c, const MATH::GVECTORF _p, MATH::GVECTORF& _outBarycentric) { return GReturn::NO_IMPLEMENTATION; }			// double
-			static GReturn ConvertAABBCEToAABBMMD(const MATH::GAABBCED _aabbCE, MATH::GAABBMMD& _outAABBMM) { return GReturn::NO_IMPLEMENTATION; }			static GReturn ConvertAABBMMToAABBCED(const MATH::GAABBMMD _aabbMM, MATH::GAABBCED& _outAABCE) { return GReturn::NO_IMPLEMENTATION; }
+			static GReturn BarycentricF(const MATH::GVECTORF _a, const MATH::GVECTORF _b, const MATH::GVECTORF _c, const MATH::GVECTORF _p, MATH::GVECTORF& _outBarycentric) { return GReturn::NO_IMPLEMENTATION; }
+			// double
+			static GReturn ConvertAABBCEToAABBMMD(const MATH::GAABBCED _aabbCE, MATH::GAABBMMD& _outAABBMM) { return GReturn::NO_IMPLEMENTATION; }
+			static GReturn ConvertAABBMMToAABBCED(const MATH::GAABBMMD _aabbMM, MATH::GAABBCED& _outAABCE) { return GReturn::NO_IMPLEMENTATION; }
 			static GReturn ComputePlaneD(const MATH::GVECTORD _planePositionA, const MATH::GVECTORD _planePositionB, const MATH::GVECTORD _planePositionC, MATH::GPLANED& _outPlane) { return GReturn::NO_IMPLEMENTATION; }
 			static GReturn IsTriangleD(const MATH::GTRIANGLED _triangle, int& _outResult) { return GReturn::NO_IMPLEMENTATION; }
 			static GReturn TestPointToConvexPolygonD(const MATH::GVECTORD _queryPoint, const MATH::GVECTORD* _polygonPoints, const unsigned int _pointsCount, int& _outResult) { return GReturn::NO_IMPLEMENTATION; }
@@ -24324,7 +24331,8 @@ namespace GW
 			static GReturn IntersectLineToPlaneD(const MATH::GLINED _line, const MATH::GPLANED _plane, int& _outResult, MATH::GVECTORD& _outContactPoint, MATH::GVECTORD& _outDirection, double& _outInterval) { return GReturn::NO_IMPLEMENTATION; }
 			static GReturn IntersectLineToSphereD(const MATH::GLINED _line, const MATH::GSPHERED _sphere, int& _outResult, MATH::GVECTORD& _outContactPoint, MATH::GVECTORD& _outDirection, double& _outInterval) { return GReturn::NO_IMPLEMENTATION; }
 			static GReturn IntersectLineToCapsuleD(const MATH::GLINED _line, const MATH::GCAPSULED _capsule, int& _outResult, MATH::GVECTORD& _outContactPoint, MATH::GVECTORD& _outDirection, double& _outInterval) { return GReturn::NO_IMPLEMENTATION; }
-			static GReturn IntersectLineToAABBD(const MATH::GLINED _line, const MATH::GAABBMMD _aabb, int& _outResult, MATH::GVECTORD& _outContactPoint, MATH::GVECTORD& _outDirection, double& _outInterval) { return GReturn::NO_IMPLEMENTATION; }			static GReturn IntersectLineToOBBD(const MATH::GLINED _line, const MATH::GOBBD _obb, int& _outResult, MATH::GVECTORD& _outContactPoint, MATH::GVECTORD& _outDirection, double& _outInterval) { return GReturn::NO_IMPLEMENTATION; }
+			static GReturn IntersectLineToAABBD(const MATH::GLINED _line, const MATH::GAABBMMD _aabb, int& _outResult, MATH::GVECTORD& _outContactPoint, MATH::GVECTORD& _outDirection, double& _outInterval) { return GReturn::NO_IMPLEMENTATION; }
+			static GReturn IntersectLineToOBBD(const MATH::GLINED _line, const MATH::GOBBD _obb, int& _outResult, MATH::GVECTORD& _outContactPoint, MATH::GVECTORD& _outDirection, double& _outInterval) { return GReturn::NO_IMPLEMENTATION; }
 			static GReturn IntersectRayToTriangleD(const MATH::GRAYD _ray, const MATH::GTRIANGLED _triangle, int& _outResult, MATH::GVECTORD& _outContactPoint, MATH::GVECTORD* _outBarycentric, double& _outInterval) { return GReturn::NO_IMPLEMENTATION; }
 			static GReturn IntersectRayToPlaneD(const MATH::GRAYD _ray, const MATH::GPLANED _plane, int& _outResult, MATH::GVECTORD& _outContactPoint, double& _outInterval) { return GReturn::NO_IMPLEMENTATION; }
 			static GReturn IntersectRayToSphereD(const MATH::GRAYD _ray, const MATH::GSPHERED _sphere, int& _outResult, MATH::GVECTORD& _outContactPoint, double& _outInterval) { return GReturn::NO_IMPLEMENTATION; }
@@ -24347,7 +24355,8 @@ namespace GW
 			static GReturn SqDistancePointToCapsuleD(const MATH::GVECTORD _point, const MATH::GCAPSULED _capsule, double& _outDistance) { return GReturn::NO_IMPLEMENTATION; }
 			static GReturn SqDistancePointToAABBD(const MATH::GVECTORD _point, const MATH::GAABBMMD _aabb, double& _outDistance) { return GReturn::NO_IMPLEMENTATION; }
 			static GReturn SqDistancePointToOBBD(const MATH::GVECTORD _point, const MATH::GOBBD _obb, double& _outDistance) { return GReturn::NO_IMPLEMENTATION; }
-			static GReturn BarycentricD(const MATH::GVECTORD _a, const MATH::GVECTORD _b, const MATH::GVECTORD _c, const MATH::GVECTORD _p, MATH::GVECTORD& _outBarycentric) { return GReturn::NO_IMPLEMENTATION; }		};
+			static GReturn BarycentricD(const MATH::GVECTORD _a, const MATH::GVECTORD _b, const MATH::GVECTORD _c, const MATH::GVECTORD _p, MATH::GVECTORD& _outBarycentric) { return GReturn::NO_IMPLEMENTATION; }
+		};
 	}// end CORE namespace
 }// end GW namespace
 

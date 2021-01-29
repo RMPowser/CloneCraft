@@ -1,7 +1,6 @@
 #pragma once
 #include <Windows.h>
 #include "vulkan/vulkan.h"
-#include <GLFW/glfw3.h>
 #include "MatrixFunctions.h"
 #include "AppConfig.h"
 #include "Camera.h"

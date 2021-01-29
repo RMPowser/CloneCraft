@@ -1,32 +1,26 @@
-#pragma once
-#include "Camera.h"
-#include "Player.h"
-#include "World.h"
-#include "Chunk.h"
-#include "Block.h"
-#include "UBO.h"
-#include "glm.h"
-#include "Ray.h"
-#include "Controller.h"
+#pragma 
+#include "Camera.hpp"
+#include "Player.hpp"
+#include "UBO.hpp"
+#include "Ray.hpp"
+#include "Controller.hpp"
 #include <chrono>
-#include <iostream>
 #include <fstream>
-#include <stdexcept>
 #include <vector>
-#include <cstring>
-#include <cstdlib>
-#include <optional>
-#include <set>
-#include <cstdint> // Necessary for UINT32_MAX
-#include <algorithm>
 #include <glm/glm.hpp>
 #include <array>
 
 #include "shaderc/shaderc.hpp" // needed for compiling shaders at runtime
 
+
+/***************** DEFINE GLOBALS ******************/
+Player player;
+Controller controller;
+bool cameraMat4Updated = false;
+bool playerMat4Updated = false;
+
 // glsl Vertex shader
-const char* vertexShaderCode = R"(
-#version 450
+const char* vertexShaderCode = R"(#version 450
 #extension GL_ARB_separate_shader_objects : enable
 
 layout(binding = 0) uniform UniformBufferObject {
@@ -50,8 +44,7 @@ void main() {
 )";
 
 // glsl fragment shader
-const char* fragmentShaderCode = R"(
-#version 450
+const char* fragmentShaderCode = R"(#version 450
 #extension GL_ARB_separate_shader_objects : enable
 
 layout(binding = 1) uniform sampler2D texSampler;
@@ -66,32 +59,19 @@ void main() {
 }
 )";
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// define globals
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-Player player;
-Controller controller;
-bool cameraMat4Updated = false;
-bool playerMat4Updated = false;
-bool firstMouse = true;
-
-
 class Renderer {
+	// gonna need these gateware objects
 	GW::SYSTEM::GWindow				window;
 	GW::GRAPHICS::GVulkanSurface	vulkan;
 	GW::CORE::GEventReceiver		vulkanEventResponder;
 	GW::INPUT::GBufferedInput		bufferedInput;
 	GW::CORE::GEventReceiver		inputEventResponder;
 
+	// gonna need these vulkan objects
 	VkDevice						device;
 	VkPhysicalDevice				physicalDevice;
 	std::vector<Vertex>				vertices;
-	VkBuffer						vertexBuffer = NULL;
-	VkDeviceMemory					vertexBufferMemory = NULL;
 	std::vector<uint32_t>			indices;
-	VkBuffer						indexBuffer = NULL;
-	VkDeviceMemory					indexBufferMemory = NULL;
 	VkShaderModule					vertShaderModule;
 	VkShaderModule					fragShaderModule;
 	VkPipeline						graphicsPipeline;
@@ -108,19 +88,20 @@ class Renderer {
 	VkQueue							graphicsQueue;
 	VkCommandPool					commandPool;
 
-	AppConfig						config;
+	// vulkan doesnt like it when you try to destroy an uninitialized buffer or device memory.
+	// we initialize them to NULL so that the first frame draw doesnt crash.
+	VkBuffer						vertexBuffer = NULL;
+	VkDeviceMemory					vertexBufferMemory = NULL;
+	VkBuffer						indexBuffer = NULL;
+	VkDeviceMemory					indexBufferMemory = NULL;
+
 	Camera							camera;
-	BlockDatabase					blockdb;
-	World							world;
+	
 
 
 public:
-	Renderer(GW::SYSTEM::GWindow& _window, GW::GRAPHICS::GVulkanSurface _vulkan, AppConfig _config) :
-	camera(_config),
-	world(blockdb, config) {
-		config = _config;
+	Renderer(GW::SYSTEM::GWindow& _window, GW::GRAPHICS::GVulkanSurface _vulkan) {
 		camera.hookEntity(player);
-		player.world = &world;
 		window = _window;
 		vulkan = _vulkan;
 		unsigned int width, height;
@@ -327,11 +308,11 @@ public:
 		// create texture images
 		for (int i = 1; i < (int)BlockId::NUM_TYPES; i++) {
 			int index = i - 1; // this is the index for the textureImages[] array, not the BlockId's
-			auto imageSize = blockdb.blockDataFor((BlockId)i).getTexture().size;
-			auto pixels = blockdb.blockDataFor((BlockId)i).getTexture().image;
+			auto imageSize = AppGlobals::world.blockdb.blockDataFor((BlockId)i).getTexture().size;
+			auto pixels = AppGlobals::world.blockdb.blockDataFor((BlockId)i).getTexture().image;
 			VkExtent3D texExtent;
-			texExtent.width = blockdb.blockDataFor((BlockId)i).getTexture().width;
-			texExtent.height = blockdb.blockDataFor((BlockId)i).getTexture().height;
+			texExtent.width = AppGlobals::world.blockdb.blockDataFor((BlockId)i).getTexture().width;
+			texExtent.height = AppGlobals::world.blockdb.blockDataFor((BlockId)i).getTexture().height;
 			texExtent.depth = 1;
 
 			VkBuffer stagingBuffer;
@@ -424,6 +405,7 @@ public:
 		/***************** INPUT ******************/
 		bufferedInput.Create(window);
 		inputEventResponder.Create(bufferedInput, [&]() {
+			static bool processMouseEventThisFrame = false;
 			GW::GEvent currentEvent;
 			inputEventResponder.Pop(currentEvent);
 			GW::INPUT::GBufferedInput::Events bufferedInputEvent;
@@ -445,7 +427,7 @@ public:
 					controller.rightPressed = true;
 					break;
 				case G_KEY_F:
-					controller.flyToggleNew = true;
+					controller.flyToggleNew = !controller.flyToggleNew;
 					break;
 				case G_KEY_SPACE:
 					controller.upPressed = true;
@@ -473,9 +455,6 @@ public:
 					break;
 				case G_KEY_D:
 					controller.rightPressed = false;
-					break;
-				case G_KEY_F:
-					controller.flyToggleNew = false;
 					break;
 				case G_KEY_SPACE:
 					controller.upPressed = false;
@@ -514,6 +493,54 @@ public:
 					break;
 				}
 				break;
+			case GW::INPUT::GBufferedInput::Events::MOUSEMOVE:
+			{
+				bool isFocus;
+				window.IsFocus(isFocus);
+				if (isFocus)
+				{
+					//ShowCursor(false);
+					if (controller.firstMouse)
+					{
+						controller.firstMouse = false;
+
+						unsigned int clientWidth;
+						unsigned int clientHeight;
+						window.GetClientWidth(clientWidth);
+						window.GetClientHeight(clientHeight);
+						controller.lastMouseX = clientWidth / 2;
+						controller.lastMouseY = clientHeight / 2;
+						SetCursorPos(static_cast<int>(controller.lastMouseX), static_cast<int>(controller.lastMouseY));
+						return;
+					}
+
+					float dx = bufferedInputEventData.screenX - controller.lastMouseX;
+					float dy = bufferedInputEventData.screenY - controller.lastMouseY;
+
+					auto rotation = &player.rotation;
+
+					rotation->y += dx * AppGlobals::mouseSensitivity;
+					rotation->x += dy * AppGlobals::mouseSensitivity;
+
+					if (rotation->x > AppGlobals::mouseBound)
+						rotation->x = AppGlobals::mouseBound;
+					else if (rotation->x < -AppGlobals::mouseBound)
+						rotation->x = -AppGlobals::mouseBound;
+
+					if (rotation->y > 360)
+						rotation->y = 0;
+					else if (rotation->y < 0)
+						rotation->y = 360;
+
+					SetCursorPos(static_cast<int>(controller.lastMouseX), static_cast<int>(controller.lastMouseY));
+				}
+				else
+				{
+					controller.firstMouse = true;
+					ShowCursor(true);
+				}
+				break;
+			}
 			default:
 				break;
 			}
@@ -524,8 +551,10 @@ public:
 		uint32_t currentImage;
 		vulkan.GetSwapchainCurrentImage(currentImage);
 
-		if (world.verticesAndIndicesUpdated) {
-			world.verticesAndIndicesUpdated = false;
+		if (AppGlobals::world.verticesAndIndicesUpdated) {
+			AppGlobals::world.verticesAndIndicesUpdated = false;
+
+			vkDeviceWaitIdle(device);
 
 			vkDestroyBuffer(device, vertexBuffer, nullptr);
 			vkFreeMemory(device, vertexBufferMemory, nullptr);
@@ -582,7 +611,7 @@ public:
 
 		VkRect2D scissor;
 		scissor.offset = { 0, 0 };
-		scissor.extent = { width, height };
+		scissor.extent = { static_cast<unsigned int>(width), static_cast<unsigned int>(height) };
 
 		vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
@@ -599,25 +628,25 @@ public:
 	void Update(float deltaTime) {
 		auto acceleration = &(player.acceleration);
 		auto rotation = &(player.rotation);
-		float moveAcceleration = config.moveAcceleration;
-		float jumpHeight = config.jumpHeight;
-		int buildRange = config.buildRange;
+		float moveAcceleration = AppGlobals::moveAcceleration;
+		float jumpHeight = AppGlobals::jumpHeight;
+		float buildRange = AppGlobals::buildRange;
 
 		if (controller.forwardPressed) {
-			acceleration->x += -cos(RADIAN * (rotation->y + 90.f)) * moveAcceleration;
-			acceleration->z += -sin(RADIAN * (rotation->y + 90.f)) * moveAcceleration;
+			acceleration->x += -cosf(AppGlobals::RADIAN * (rotation->y + 90.f)) * moveAcceleration;
+			acceleration->z += -sinf(AppGlobals::RADIAN * (rotation->y + 90.f)) * moveAcceleration;
 		}
 		if (controller.backPressed) {
-			acceleration->x += cos(RADIAN * (rotation->y + 90.f)) * moveAcceleration;
-			acceleration->z += sin(RADIAN * (rotation->y + 90.f)) * moveAcceleration;
+			acceleration->x += cosf(AppGlobals::RADIAN * (rotation->y + 90.f)) * moveAcceleration;
+			acceleration->z += sinf(AppGlobals::RADIAN * (rotation->y + 90.f)) * moveAcceleration;
 		}
 		if (controller.leftPressed) {
-			acceleration->x += -cos(RADIAN * (rotation->y)) * moveAcceleration;
-			acceleration->z += -sin(RADIAN * (rotation->y)) * moveAcceleration;
+			acceleration->x += -cosf(AppGlobals::RADIAN * (rotation->y)) * moveAcceleration;
+			acceleration->z += -sinf(AppGlobals::RADIAN * (rotation->y)) * moveAcceleration;
 		}
 		if (controller.rightPressed) {
-			acceleration->x += cos(RADIAN * (rotation->y)) * moveAcceleration;
-			acceleration->z += sin(RADIAN * (rotation->y)) * moveAcceleration;
+			acceleration->x += cosf(AppGlobals::RADIAN * (rotation->y)) * moveAcceleration;
+			acceleration->z += sinf(AppGlobals::RADIAN * (rotation->y)) * moveAcceleration;
 		}
 		if (controller.upPressed) {
 			if (player.isOnGround && !player.isFlying) {
@@ -635,26 +664,22 @@ public:
 			controller.flyToggleOld = controller.flyToggleNew;
 		}
 		if (controller.speedModifierPressed) {
-			moveAcceleration = 1.5;
+			moveAcceleration = AppGlobals::moveAcceleration * 1.5f;
 		} else {
-			moveAcceleration = 1;
+			moveAcceleration = AppGlobals::moveAcceleration;
 		}
 		if (controller.leftClicked) {
-			Vec3 camPosition{};
-			camPosition.x = camera.position.x;
-			camPosition.y = camera.position.y;
-			camPosition.z = camera.position.z;
-
-			for (Ray ray(camPosition, player.rotation); ray.getLength() <= buildRange; ray.step(0.05f)) {
+			for (Ray ray(camera.position, player.rotation); ray.getLength() <= buildRange; ray.step(0.05f)) {
 				int x = static_cast<int>(ray.getEnd().x);
 				int y = static_cast<int>(ray.getEnd().y);
 				int z = static_cast<int>(ray.getEnd().z);
 
-				auto block = world.getBlock(x, y, z);
+				auto block = AppGlobals::world.getBlock(x, y, z);
 
 				if (block != BlockId::Air) {
-					if (world.setBlock(BlockId::Air, x, y, z)) {
-						world.updateChunk(World::getChunkXZ(x, z));
+					if (AppGlobals::world.setBlock(BlockId::Air, x, y, z)) {
+						GW::MATH::GVECTORF xz = World::getChunkXZ(x, z);
+						AppGlobals::world.updateChunk(AppGlobals::world.getChunk(xz.x, xz.z));
 						break;
 					} else {
 						__debugbreak();
@@ -666,23 +691,19 @@ public:
 			controller.leftClicked = false;
 		}
 		if (controller.rightClicked) {
-			Vec3 camPosition{};
-			camPosition.x = camera.position.x;
-			camPosition.y = camera.position.y;
-			camPosition.z = camera.position.z;
+			GW::MATH::GVECTORF lastRayPosition;
 
-			Vec3 lastRayPosition;
-
-			for (Ray ray(camPosition, player.rotation); ray.getLength() <= buildRange; ray.step(0.05f)) {
+			for (Ray ray(camera.position, player.rotation); ray.getLength() <= buildRange; ray.step(0.05f)) {
 				int x = static_cast<int>(ray.getEnd().x);
 				int y = static_cast<int>(ray.getEnd().y);
 				int z = static_cast<int>(ray.getEnd().z);
 
-				auto block = world.getBlock(x, y, z);
+				auto block = AppGlobals::world.getBlock(x, y, z);
 
 				if (block != BlockId::Air) {
-					if (world.setBlock(BlockId::Grass, lastRayPosition.x, lastRayPosition.y, lastRayPosition.z)) {
-						world.updateChunk(World::getChunkXZ(lastRayPosition.x, lastRayPosition.z));
+					if (AppGlobals::world.setBlock(BlockId::Grass, static_cast<int>(lastRayPosition.x), static_cast<int>(lastRayPosition.y), static_cast<int>(lastRayPosition.z))) {
+						GW::MATH::GVECTORF xz = World::getChunkXZ(static_cast<int>(lastRayPosition.x), static_cast<int>(lastRayPosition.z));
+						AppGlobals::world.updateChunk(AppGlobals::world.getChunk(xz.x, xz.z));
 						break;
 					} else {
 						__debugbreak();
@@ -695,33 +716,27 @@ public:
 		}
 
 
+#ifndef NDEBUG
+		SetStdOutCursorPosition(0, 0);
+		printf(R"(Player Info
+position x: %f		y: %f		z: %f
+speed: %f
+acceleration x: %f		y: %f		z: %f
+velocity x: %f		y: %f		z: %f
+dt: %f
+
+)", 
+		player.bbox.center.x, player.bbox.center.y, player.bbox.center.z,
+		moveAcceleration,
+		acceleration->x, acceleration->y, acceleration->z,
+		player.velocity.x, player.velocity.y, player.velocity.z,
+		deltaTime);
+#endif // DEBUG
+		
 
 		player.update(deltaTime, controller);
 		camera.update();
-
-
-//#ifndef NDEBUG
-//		SetStdOutCursorPosition(0, 0);
-//		std::cout << "                                                               ";
-//		std::cout << "\n                                                               ";
-//		std::cout << "\n                                                               ";
-//		std::cout << "\n                                                               ";
-//		std::cout << "\n                                                               ";
-//		std::cout << "\n                                                               ";
-//		std::cout << "\n                                                               ";
-//		SetStdOutCursorPosition(0, 0);
-//		std::cout << "Player";
-//		std::cout << "\nx: " << player.bbox.position.x << "\ty: " << player.bbox.position.y << "\tz: " << player.bbox.position.z;
-//		std::cout << "\nspeed: " << config.moveAcceleration;
-//		std::cout << "\nacceleration x: " << acceleration->x << " y: " << acceleration->y << " z: " << acceleration->z;
-//		std::cout << "\nvelocity x: " << player.velocity.x << " y: " << player.velocity.y << " z: " << player.velocity.z;
-//		std::cout << "\ndt: " << dt << "\n";
-//#endif // DEBUG
-		
-
-		
-
-		world.update(camera, vertices, indices);
+		AppGlobals::world.update(camera, vertices, indices);
 	}
 
 private:
@@ -789,14 +804,10 @@ private:
 	void updateUniformBuffer(uint32_t currentImage, float dt) {
 		// define the model, view, and projection transformations in the uniform buffer object. 
 		UniformBufferObject ubo{};
-		ubo.model = glm::mat4(1.0f);
+		ubo.model = GW::MATH::GIdentityMatrixF;
 		ubo.view = camera.getViewMatrix();
 		ubo.proj = camera.getProjMatrix();
 
-		// GLM was originally designed for OpenGL, where the Y coordinate of the clip coordinates is inverted. The easiest way to 
-		// compensate for that is to flip the sign on the scaling factor of the Y axis in the projection matrix. If you don't do 
-		// this, then the image will be rendered upside down.
-		ubo.proj[1][1] *= -1;
 
 		// All of the transformations are defined now, so we can copy the data in the uniform buffer object to the current uniform
 		// buffer. This happens in exactly the same way as we did for vertex buffers, except without a staging buffer

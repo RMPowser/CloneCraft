@@ -118,6 +118,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <SupportJustMyCode>false</SupportJustMyCode>
       <UseFullPaths>false</UseFullPaths>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -179,7 +180,7 @@ copy "$(SolutionDir)README.TXT" "$(OutDir)"</Command>
       </SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)CloneCraft\includes\glm;$(SolutionDir)CloneCraft\includes\stb-master;$(SolutionDir)CloneCraft\includes\tinyobjloader-master;$(SolutionDir)CloneCraft\includes\boost;$(SolutionDir)CloneCraft\includes\LibNoise\include;C:\SDKs\Vulkan\1.2.154.1\Include</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp14</LanguageStandard>
       <DebugInformationFormat />
       <UseFullPaths>false</UseFullPaths>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -207,37 +208,26 @@ copy "$(SolutionDir)README.TXT" "$(OutDir)"</Command>
     </ProjectReference>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Block.cpp" />
-    <ClCompile Include="Camera.cpp" />
-    <ClCompile Include="Chunk.cpp" />
-    <ClCompile Include="Frustum.cpp" />
-    <ClCompile Include="Layer.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="noiseutils.cpp" />
-    <ClCompile Include="Player.cpp" />
-    <ClCompile Include="World.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="AABB.h" />
-    <ClInclude Include="AppConfig.h" />
-    <ClInclude Include="Block.h" />
-    <ClInclude Include="Camera.h" />
-    <ClInclude Include="Chunk.h" />
-    <ClInclude Include="Renderer.h" />
-    <ClInclude Include="Controller.h" />
-    <ClInclude Include="Entity.h" />
-    <ClInclude Include="Frustum.h" />
-    <ClInclude Include="glm.h" />
-    <ClInclude Include="Layer.h" />
-    <ClInclude Include="MatrixFunctions.h" />
+    <ClInclude Include="AppGlobals.hpp" />
+    <ClInclude Include="Block.hpp" />
+    <ClInclude Include="Camera.hpp" />
+    <ClInclude Include="Chunk.hpp" />
+    <ClInclude Include="Renderer.hpp" />
+    <ClInclude Include="Controller.hpp" />
+    <ClInclude Include="Entity.hpp" />
+    <ClInclude Include="Frustum.hpp" />
+    <ClInclude Include="Layer.hpp" />
     <ClInclude Include="noiseutils.h" />
-    <ClInclude Include="Player.h" />
-    <ClInclude Include="Radian.h" />
-    <ClInclude Include="Ray.h" />
-    <ClInclude Include="TerrainGenerator.h" />
-    <ClInclude Include="UBO.h" />
-    <ClInclude Include="Vertex.h" />
-    <ClInclude Include="World.h" />
+    <ClInclude Include="Player.hpp" />
+    <ClInclude Include="Ray.hpp" />
+    <ClInclude Include="TerrainGenerator.hpp" />
+    <ClInclude Include="UBO.hpp" />
+    <ClInclude Include="Vertex.hpp" />
+    <ClInclude Include="World.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

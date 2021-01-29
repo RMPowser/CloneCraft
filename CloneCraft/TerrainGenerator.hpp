@@ -1,13 +1,14 @@
 #pragma once
+#ifndef NOISE_STATIC
+#define NOISE_STATIC
+#endif
 #include "noise/noise.h"
 #include "noiseutils.h"
 #include <time.h>
 
 class TerrainGenerator {
 public:
-	TerrainGenerator(const int CHUNK_WIDTH) :
-		chunkWidth(CHUNK_WIDTH){
-	}
+	TerrainGenerator(){}
 
 	module::Perlin myModule;
 	utils::NoiseMap heightMap;
@@ -17,7 +18,7 @@ public:
 	utils::WriterBMP writer;
 	
 
-	utils::Image* GetTerrain(double chunkX, double chunkZ, int& seed) {
+	utils::Image* GetTerrain(double chunkX, double chunkZ) {
 		double scalar = static_cast<double>(25.0000000000);
 		
 		// define the boundaries of the part of the terrain we want to render
@@ -27,17 +28,17 @@ public:
 		double highBoundZ = (chunkZ + 1) / scalar;
 
 		// if there is no seed, create one from the current time
-		if (seed == -1) {
-			seed = time(NULL);
+		if (AppGlobals::seed == -1) {
+			AppGlobals::seed = time(NULL);
 		}
 		
 		// apply the seed
-		myModule.SetSeed(seed);
+		myModule.SetSeed(AppGlobals::seed);
 
 		// create the heightmap
 		heightMapBuilder.SetSourceModule(myModule);
 		heightMapBuilder.SetDestNoiseMap(heightMap);
-		heightMapBuilder.SetDestSize(chunkWidth, chunkWidth);
+		heightMapBuilder.SetDestSize(AppGlobals::CHUNK_WIDTH, AppGlobals::CHUNK_WIDTH);
 		heightMapBuilder.SetBounds(lowBoundX, highBoundX, lowBoundZ, highBoundZ);
 		heightMapBuilder.Build();
 
@@ -59,9 +60,6 @@ public:
 
 
 private:
-	const int chunkWidth;
-
-
 	// converts the map's range of 0 to 255 into an acceptable range
 	void normalize(utils::Image& img) {
 		for (int x = 0; x < img.GetWidth(); x++) {
@@ -75,18 +73,14 @@ private:
 				uint8_t tmax = 127;
 				float m = img.GetValue(x, y).red;
 
-				double slope = 1.0 * (tmax - tmin) / (rmax - rmin);
+				float slope = 1 * (tmax - tmin) / (rmax - rmin);
 
-				uint8_t newValue = tmin + round(slope * (m - rmin));
+				uint8_t newValue = tmin + floorf((slope * (m - rmin)) + 0.5f);
 				utils::Color newColor(newValue, newValue, newValue, 255);
 				
 				img.SetValue(x, y, newColor);
 			}
 		}
-	}
-
-	double round(double d) {
-		return floor(d + 0.5);
 	}
 };
 

@@ -12,4 +12,7 @@ struct Controller {
 	bool speedModifierPressed = false;
 	bool leftClicked = false;
 	bool rightClicked = false;
+	bool firstMouse = true;
+	double lastMouseX = 0;
+	double lastMouseY = 0;
 };

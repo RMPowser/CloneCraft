@@ -1,6 +1,9 @@
+#ifndef NDEBUG
 #define _CRTDBG_MAP_ALLOC
 #include <stdlib.h>
 #include <crtdbg.h>
+#endif
+
 #define GATEWARE_ENABLE_CORE
 #define GATEWARE_ENABLE_SYSTEM
 #define GATEWARE_ENABLE_GRAPHICS
@@ -8,34 +11,42 @@
 #define GATEWARE_ENABLE_MATH
 #define GATEWARE_ENABLE_INPUT
 #include "../Gateware/Gateware.h"
-#include "AppConfig.h"
-#include "Renderer.h"
+#include "AppGlobals.hpp"
+#include "Renderer.hpp"
+
+void PrintDebugInfo(const char* string)
+{
+	#ifndef NDEBUG
+	std::cout << string << '\n';
+	#endif
+}
 
 int main() {
+	#ifndef NDEBUG
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-
-	AppConfig config;
-	config.windowTitle = "CloneCraft   :^)";
-	config.renderDistance = 8;
+	#endif
 
 	GW::SYSTEM::GWindow window;
-	GW::CORE::GEventReceiver events;
+	GW::CORE::GEventReceiver windowEvents;
 	GW::GRAPHICS::GVulkanSurface vulkan;
 
 	try {
-		if (+window.Create(200, 200, config.windowX, config.windowY, GW::SYSTEM::GWindowStyle::WINDOWEDBORDERED)) {
-			window.SetWindowName(config.windowTitle.c_str());
-			events.Create(window, [&]() {});
+		PrintDebugInfo("Creating GWindow...");
+		if (+window.Create(200, 200, AppGlobals::windowX, AppGlobals::windowY, GW::SYSTEM::GWindowStyle::WINDOWEDBORDERED)) {
+			PrintDebugInfo("Setting GWindow title...");
+			window.SetWindowName(AppGlobals::windowTitle.c_str());
+			windowEvents.Create(window, [&]() {});
 
 			unsigned long long bitmask = GW::GRAPHICS::GGraphicsInitOptions::DEPTH_BUFFER_SUPPORT;
 
+			PrintDebugInfo("Creating GVulkanSurface...");
 			#ifndef NDEBUG
-			if (+vulkan.Create(window, bitmask, config.validationLayers.size(), config.validationLayers.data(), 0, nullptr, config.deviceExtensions.size(), config.deviceExtensions.data(), true))
+			if (+vulkan.Create(window, bitmask, AppGlobals::validationLayers.size(), AppGlobals::validationLayers.data(), 0, nullptr, AppGlobals::deviceExtensions.size(), AppGlobals::deviceExtensions.data(), true))
 			#else
 			if (+vulkan.Create(window, bitmask))
 			#endif
 			{
-				Renderer renderer(window, vulkan, config);
+				Renderer renderer(window, vulkan);
 
 				std::array<VkClearValue, 2> clearValues{};
 				clearValues[0].color = { (70.0f / 255), (160.0f / 255), (255.0f / 255), (255.0f / 255) };
