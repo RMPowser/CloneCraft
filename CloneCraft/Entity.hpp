@@ -6,7 +6,7 @@ struct Entity
 	GW::MATH::GVECTORF position;
 	GW::MATH::GVECTORF rotation;
 	GW::MATH::GVECTORF velocity;
-	GW::MATH::GAABBCEF bbox;
+	GW::MATH::GAABBMMF bbox;
 
 	Entity() :
 		bbox({ 0, 0, 0, 0, 0, 0 }),
@@ -22,7 +22,7 @@ struct Entity
 		velocity(GW::MATH::GZeroVectorF) {
 	}
 
-	Entity(const GW::MATH::GVECTORF& pos, const GW::MATH::GVECTORF& rot, const GW::MATH::GAABBCEF& _bbox) :
+	Entity(const GW::MATH::GVECTORF& pos, const GW::MATH::GVECTORF& rot, const GW::MATH::GAABBMMF& _bbox) :
 		bbox(_bbox),
 		position(pos),
 		rotation(rot),
@@ -43,14 +43,14 @@ struct Entity
 				velocity.y == other.velocity.y &&
 				velocity.z == other.velocity.z &&
 				velocity.w == other.velocity.w &&
-				bbox.center.x == other.bbox.center.x &&
-				bbox.center.y == other.bbox.center.y &&
-				bbox.center.z == other.bbox.center.z &&
-				bbox.center.w == other.bbox.center.w &&
-				bbox.extent.x == other.bbox.extent.x &&
-				bbox.extent.y == other.bbox.extent.y &&
-				bbox.extent.z == other.bbox.extent.z &&
-				bbox.extent.w == other.bbox.extent.w);
+				bbox.min.x == other.bbox.min.x &&
+				bbox.min.y == other.bbox.min.y &&
+				bbox.min.z == other.bbox.min.z &&
+				bbox.min.w == other.bbox.min.w &&
+				bbox.max.x == other.bbox.max.x &&
+				bbox.max.y == other.bbox.max.y &&
+				bbox.max.z == other.bbox.max.z &&
+				bbox.max.w == other.bbox.max.w);
 	}
 
 	bool operator!=(const Entity& other) const

@@ -18,14 +18,14 @@ public:
 
 	~Layer() {}
 
-	BlockId getBlock(int x, int z)
+	BlockId getBlock(GW::MATH::GVECTORF blockPos)
 	{
-		return blocks[x][z];
+		return blocks[static_cast<int>(blockPos.x)][static_cast<int>(blockPos.z)];
 	}
 
-	bool setBlock(BlockId id, int x, int z)
+	bool setBlock(BlockId id, GW::MATH::GVECTORF blockPos)
 	{
-		blocks[x][z] = id;
+		blocks[static_cast<int>(blockPos.x)][static_cast<int>(blockPos.z)] = id;
 		return true;
 	}
 };

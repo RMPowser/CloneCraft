@@ -14,10 +14,13 @@
 #include "AppGlobals.hpp"
 #include "Renderer.hpp"
 
-void PrintDebugInfo(const char* string)
+void PrintDebugInfo(const char* format, ...)
 {
 	#ifndef NDEBUG
-	std::cout << string << '\n';
+	va_list args;
+	va_start(args, format);
+	vprintf(format, args);
+	va_end(args);
 	#endif
 }
 
@@ -31,15 +34,15 @@ int main() {
 	GW::GRAPHICS::GVulkanSurface vulkan;
 
 	try {
-		PrintDebugInfo("Creating GWindow...");
+		PrintDebugInfo("Creating GWindow...\n");
 		if (+window.Create(200, 200, AppGlobals::windowX, AppGlobals::windowY, GW::SYSTEM::GWindowStyle::WINDOWEDBORDERED)) {
-			PrintDebugInfo("Setting GWindow title...");
+			PrintDebugInfo("Setting GWindow title...\n");
 			window.SetWindowName(AppGlobals::windowTitle.c_str());
 			windowEvents.Create(window, [&]() {});
 
-			unsigned long long bitmask = GW::GRAPHICS::GGraphicsInitOptions::DEPTH_BUFFER_SUPPORT;
+			unsigned long long bitmask = GW::GRAPHICS::GGraphicsInitOptions::DEPTH_BUFFER_SUPPORT | GW::GRAPHICS::GGraphicsInitOptions::DEPTH_STENCIL_SUPPORT;
 
-			PrintDebugInfo("Creating GVulkanSurface...");
+			PrintDebugInfo("Creating GVulkanSurface...\n");
 			#ifndef NDEBUG
 			if (+vulkan.Create(window, bitmask, AppGlobals::validationLayers.size(), AppGlobals::validationLayers.data(), 0, nullptr, AppGlobals::deviceExtensions.size(), AppGlobals::deviceExtensions.data(), true))
 			#else

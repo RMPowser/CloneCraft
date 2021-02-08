@@ -50,13 +50,12 @@ public:
     Camera()
     {
         m_projectionMatrix = makeProjectionMatrix();
-        position = { 0, 0, -3.5, 0 };
+        position = { 0, 0, 0, 0 };
     }
 
     void update()
     {
         position = m_pEntity->position;
-        position.y += 0.6f;
         rotation = m_pEntity->rotation;
 
         m_viewMatrix = makeViewMatrix(*this);
@@ -71,8 +70,8 @@ public:
 
     GW::MATH::GMATRIXF& getViewMatrix() { return m_viewMatrix; }
     GW::MATH::GMATRIXF& getProjMatrix() { return m_projectionMatrix; }
-    void recreateProjectionMatrix() { m_projectionMatrix = makeProjectionMatrix(); }
     GW::MATH::GMATRIXF& getProjectionViewMatrix() { return m_projViewMatrx; }
+    void recreateProjectionMatrix() { m_projectionMatrix = makeProjectionMatrix(); }
 
     ViewFrustum& getFrustum() { return m_frustum; }
 

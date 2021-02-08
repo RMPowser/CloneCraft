@@ -12,6 +12,11 @@ namespace GW
 					left.z == right.z &&
 					left.w == right.w);
 		}
+
+		bool operator!=(const GVECTORF& left, const GVECTORF& right)
+		{
+			return !(left == right);
+		}
 	}
 }
 

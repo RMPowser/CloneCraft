@@ -100,7 +100,7 @@ class Renderer {
 
 
 public:
-	Renderer(GW::SYSTEM::GWindow& _window, GW::GRAPHICS::GVulkanSurface _vulkan) {
+	Renderer(GW::SYSTEM::GWindow& _window, GW::GRAPHICS::GVulkanSurface& _vulkan) {
 		camera.hookEntity(player);
 		window = _window;
 		vulkan = _vulkan;
@@ -399,6 +399,9 @@ public:
 				CreateUniformBuffers(newSwapchainImageCount);
 				CreateDescriptorPool(newSwapchainImageCount);
 				CreateDescriptorSets(newSwapchainImageCount);
+				window.GetClientWidth(AppGlobals::windowX);
+				window.GetClientHeight(AppGlobals::windowY);
+				camera.recreateProjectionMatrix();
 			}
 		});
 
@@ -591,64 +594,70 @@ public:
 		}
 		else // always load the chunk the player is in so we never have a 0 size vertex buffer
 		{
-			auto playerChunkXZ = AppGlobals::world.getChunkXZ(player.position.x, player.position.z);
-			Chunk c = AppGlobals::world.getChunk(playerChunkXZ.x, playerChunkXZ.z);
-
-			if (!c.isLoaded)
+			if (vertices.size() == 0 || indices.size() == 0)
 			{
-				AppGlobals::world.initChunk(c);
+				auto playerChunkXZ = AppGlobals::world.getChunkXZ(player.position);
+				auto c = AppGlobals::world.getChunk(playerChunkXZ);
+
+				vertices.clear();
+				indices.clear();
+
+				if (!c->isLoaded)
+				{
+					AppGlobals::world.initChunk(playerChunkXZ);
+				}
+
+				// get the chunks data
+				auto verts = c->vertices;
+				auto inds = c->indices;
+
+				// save the offset for the indices
+				auto offset = vertices.size();
+
+				vertices.insert(vertices.end(), verts.begin(), verts.end());
+
+				// account for the offset into the vertices vector and store the indices for later
+				for (int i = 0; i < inds.size(); i++)
+				{
+					auto ind(inds[i] + offset);
+					indices.push_back(ind);
+				}
+
+				vkDeviceWaitIdle(device);
+
+				vkDestroyBuffer(device, vertexBuffer, nullptr);
+				vkFreeMemory(device, vertexBufferMemory, nullptr);
+				vkDestroyBuffer(device, indexBuffer, nullptr);
+				vkFreeMemory(device, indexBufferMemory, nullptr);
+
+				// time to start creating the actual vertex buffer	
+				VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
+
+				VkBuffer vertexStagingBuffer;
+				VkDeviceMemory vertexStagingBufferMemory;
+
+				GvkHelper::create_buffer(physicalDevice, device, vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &vertexStagingBuffer, &vertexStagingBufferMemory);
+				GvkHelper::write_to_buffer(device, vertexStagingBufferMemory, vertices.data(), (unsigned int)vertexBufferSize);
+				GvkHelper::create_buffer(physicalDevice, device, vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vertexBuffer, &vertexBufferMemory);
+				GvkHelper::copy_buffer(device, commandPool, graphicsQueue, vertexStagingBuffer, vertexBuffer, vertexBufferSize);
+
+				vkDestroyBuffer(device, vertexStagingBuffer, nullptr);
+				vkFreeMemory(device, vertexStagingBufferMemory, nullptr);
+
+				// and the index buffer
+				VkDeviceSize indexBufferSize = sizeof(indices[0]) * indices.size();
+
+				VkBuffer indexStagingBuffer;
+				VkDeviceMemory indexStagingBufferMemory;
+
+				GvkHelper::create_buffer(physicalDevice, device, indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &indexStagingBuffer, &indexStagingBufferMemory);
+				GvkHelper::write_to_buffer(device, indexStagingBufferMemory, indices.data(), (unsigned int)indexBufferSize);
+				GvkHelper::create_buffer(physicalDevice, device, indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &indexBuffer, &indexBufferMemory);
+				GvkHelper::copy_buffer(device, commandPool, graphicsQueue, indexStagingBuffer, indexBuffer, indexBufferSize);
+
+				vkDestroyBuffer(device, indexStagingBuffer, nullptr);
+				vkFreeMemory(device, indexStagingBufferMemory, nullptr);
 			}
-
-			// get the chunks data
-			auto verts = c.vertices;
-			auto inds = c.indices;
-
-			// save the offset for the indices
-			auto offset = vertices.size();
-
-			vertices.insert(vertices.end(), verts.begin(), verts.end());
-
-			// account for the offset into the vertices vector and store the indices for later
-			for (int i = 0; i < inds.size(); i++)
-			{
-				auto ind(inds[i] + offset);
-				indices.push_back(ind);
-			}
-
-			vkDeviceWaitIdle(device);
-
-			vkDestroyBuffer(device, vertexBuffer, nullptr);
-			vkFreeMemory(device, vertexBufferMemory, nullptr);
-			vkDestroyBuffer(device, indexBuffer, nullptr);
-			vkFreeMemory(device, indexBufferMemory, nullptr);
-
-			// time to start creating the actual vertex buffer	
-			VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
-
-			VkBuffer vertexStagingBuffer;
-			VkDeviceMemory vertexStagingBufferMemory;
-
-			GvkHelper::create_buffer(physicalDevice, device, vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &vertexStagingBuffer, &vertexStagingBufferMemory);
-			GvkHelper::write_to_buffer(device, vertexStagingBufferMemory, vertices.data(), (unsigned int)vertexBufferSize);
-			GvkHelper::create_buffer(physicalDevice, device, vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vertexBuffer, &vertexBufferMemory);
-			GvkHelper::copy_buffer(device, commandPool, graphicsQueue, vertexStagingBuffer, vertexBuffer, vertexBufferSize);
-
-			vkDestroyBuffer(device, vertexStagingBuffer, nullptr);
-			vkFreeMemory(device, vertexStagingBufferMemory, nullptr);
-
-			// and the index buffer
-			VkDeviceSize indexBufferSize = sizeof(indices[0]) * indices.size();
-
-			VkBuffer indexStagingBuffer;
-			VkDeviceMemory indexStagingBufferMemory;
-
-			GvkHelper::create_buffer(physicalDevice, device, indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &indexStagingBuffer, &indexStagingBufferMemory);
-			GvkHelper::write_to_buffer(device, indexStagingBufferMemory, indices.data(), (unsigned int)indexBufferSize);
-			GvkHelper::create_buffer(physicalDevice, device, indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &indexBuffer, &indexBufferMemory);
-			GvkHelper::copy_buffer(device, commandPool, graphicsQueue, indexStagingBuffer, indexBuffer, indexBufferSize);
-
-			vkDestroyBuffer(device, indexStagingBuffer, nullptr);
-			vkFreeMemory(device, indexStagingBufferMemory, nullptr);
 		}
 
 		updateUniformBuffer(currentImage, deltaTime);
@@ -716,6 +725,7 @@ public:
 			else if (player.isFlying) {
 				acceleration->y += moveAcceleration;
 			}
+			controller.upPressed = false;
 		}
 		if (controller.downPressed) {
 			acceleration->y += -moveAcceleration;
@@ -731,16 +741,13 @@ public:
 		}
 		if (controller.leftClicked) {
 			for (Ray ray(camera.position, player.rotation); ray.getLength() <= buildRange; ray.step(0.05f)) {
-				int x = static_cast<int>(ray.getEnd().x);
-				int y = static_cast<int>(ray.getEnd().y);
-				int z = static_cast<int>(ray.getEnd().z);
-
-				auto block = AppGlobals::world.getBlock(x, y, z);
+				auto rayEnd = ray.getEnd();
+				auto block = AppGlobals::world.getBlock(rayEnd);
 
 				if (block != BlockId::Air) {
-					if (AppGlobals::world.setBlock(BlockId::Air, x, y, z)) {
-						GW::MATH::GVECTORF xz = World::getChunkXZ(x, z);
-						AppGlobals::world.updateChunk(AppGlobals::world.getChunk(xz.x, xz.z));
+					if (AppGlobals::world.setBlock(BlockId::Air, rayEnd)) {
+						GW::MATH::GVECTORF xz = World::getChunkXZ(rayEnd);
+						AppGlobals::world.updateChunk(AppGlobals::world.getChunk(xz)->position);
 						break;
 					} else {
 						__debugbreak();
@@ -750,25 +757,26 @@ public:
 			}
 
 			controller.leftClicked = false;
-		}
+		}   
 		if (controller.rightClicked) {
 			GW::MATH::GVECTORF lastRayPosition;
+			Ray ray(camera.position, player.rotation);
 
-			for (Ray ray(camera.position, player.rotation); ray.getLength() <= buildRange; ray.step(0.05f)) {
-				int x = static_cast<int>(ray.getEnd().x);
-				int y = static_cast<int>(ray.getEnd().y);
-				int z = static_cast<int>(ray.getEnd().z);
+			for (; ray.getLength() <= buildRange; ray.step(0.05f)) {
+				auto rayEnd = ray.getEnd();
+				if (rayEnd != player.position) {
+					auto block = AppGlobals::world.getBlock(rayEnd);
 
-				auto block = AppGlobals::world.getBlock(x, y, z);
-
-				if (block != BlockId::Air) {
-					if (AppGlobals::world.setBlock(BlockId::Grass, static_cast<int>(lastRayPosition.x), static_cast<int>(lastRayPosition.y), static_cast<int>(lastRayPosition.z))) {
-						GW::MATH::GVECTORF xz = World::getChunkXZ(static_cast<int>(lastRayPosition.x), static_cast<int>(lastRayPosition.z));
-						AppGlobals::world.updateChunk(AppGlobals::world.getChunk(xz.x, xz.z));
-						break;
-					} else {
-						__debugbreak();
-						throw new std::runtime_error("unable to destroy block!");
+					if (block != BlockId::Air) {
+   						if (AppGlobals::world.setBlock(BlockId::Grass, lastRayPosition)) {
+							GW::MATH::GVECTORF xz = World::getChunkXZ(lastRayPosition);
+							AppGlobals::world.updateChunk(AppGlobals::world.getChunk(xz)->position);
+							break;
+						}
+						else {
+							__debugbreak();
+							throw new std::runtime_error("unable to destroy block!");
+						}
 					}
 				}
 				lastRayPosition = ray.getEnd();
@@ -779,18 +787,21 @@ public:
 
 #ifndef NDEBUG
 		SetStdOutCursorPosition(0, 0);
-		printf(R"(Player Info
+		printf(R"(Player Info                            
 position x: %f		y: %f		z: %f
+bbox x: %f		y: %f		z: %f
 speed: %f
 acceleration x: %f		y: %f		z: %f
 velocity x: %f		y: %f		z: %f
+grounded: %d
 dt: %f
 
-)", 
-		player.bbox.center.x, player.bbox.center.y, player.bbox.center.z,
+)",		player.position.x, player.position.y, player.position.z,
+		player.bbox.min.x, player.bbox.min.y, player.bbox.min.z,
 		moveAcceleration,
 		acceleration->x, acceleration->y, acceleration->z,
 		player.velocity.x, player.velocity.y, player.velocity.z,
+		player.isOnGround,
 		deltaTime);
 #endif // DEBUG
 		

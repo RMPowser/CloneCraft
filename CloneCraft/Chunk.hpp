@@ -1,42 +1,35 @@
 #pragma once
 #include "Layer.hpp"
 
-class Chunk
-{
+class Chunk {
 public:
 	Layer layers[256];
 	GW::MATH::GVECTORF position;
 	std::vector<Vertex> vertices;
 	std::vector<unsigned int> indices;
-	GW::MATH::GAABBCEF bbox;
+	GW::MATH::GAABBMMF bbox;
 	bool isLoaded = false;
 
 
 	Chunk() {}
-	Chunk(GW::MATH::GVECTORF pos) :
-		position(pos),
-		bbox({ static_cast<float>(AppGlobals::CHUNK_WIDTH), static_cast<float>(AppGlobals::CHUNK_HEIGHT), static_cast<float>(AppGlobals::CHUNK_WIDTH) })
-	{
-		GW::MATH::GVector::AddVectorF(bbox.extent, GW::MATH::GVECTORF{ pos.x * AppGlobals::CHUNK_WIDTH, 0, pos.z * AppGlobals::CHUNK_WIDTH, 0 }, bbox.extent); // bbox position is in world coordinates, not chunk coordinates
+	Chunk(GW::MATH::GVECTORF pos) {
+		position = { floor(pos.x), 0, floor(pos.z), 0 }; // chunks never have a y position
+		bbox.min = position;
+		bbox.max = { AppGlobals::CHUNK_WIDTH / 2, AppGlobals::CHUNK_HEIGHT, AppGlobals::CHUNK_WIDTH / 2, 0 };
 	}
 	~Chunk() {}
 
-	BlockId getBlock(int x, int y, int z)
-	{
-		if (isBlockOutOfBounds(x, y, z))
-		{
+	BlockId getBlock(GW::MATH::GVECTORF blockPos) {
+		if (isBlockOutOfBounds(blockPos)) {
 			return BlockId::Air;
 		}
 
-		return layers[y].getBlock(x, z);
+		return layers[static_cast<int>(blockPos.y)].getBlock(blockPos);
 	}
 
-	bool setBlock(BlockId id, int x, int y, int z)
-	{
-		if (!isBlockOutOfBounds(x, y, z))
-		{
-			if (layers[y].setBlock(id, x, z))
-			{
+	bool setBlock(BlockId id, GW::MATH::GVECTORF blockPos) {
+		if (!isBlockOutOfBounds(blockPos)) {
+			if (layers[static_cast<int>(blockPos.y)].setBlock(id, blockPos)) {
 				return true;
 			}
 		}
@@ -44,22 +37,20 @@ public:
 		return false;
 	}
 
-	bool isBlockOutOfBounds(int x, int y, int z)
-	{
-		if (x >= AppGlobals::CHUNK_WIDTH)
+	bool isBlockOutOfBounds(GW::MATH::GVECTORF blockPos) {
+		if (blockPos.x >= AppGlobals::CHUNK_WIDTH)
 			return true;
-		if (z >= AppGlobals::CHUNK_WIDTH)
-			return true;
-
-		if (x < 0)
-			return true;
-		if (y < 0)
-			return true;
-		if (z < 0)
+		if (blockPos.z >= AppGlobals::CHUNK_WIDTH)
 			return true;
 
-		if (y >= AppGlobals::CHUNK_HEIGHT)
-		{
+		if (blockPos.x < 0)
+			return true;
+		if (blockPos.y < 0)
+			return true;
+		if (blockPos.z < 0)
+			return true;
+
+		if (blockPos.y >= AppGlobals::CHUNK_HEIGHT) {
 			return true;
 		}
 
