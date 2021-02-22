@@ -85,37 +85,49 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>
+      </SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)CloneCraft\includes\vulkan\Include;$(SolutionDir)CloneCraft\includes\glfw\include;$(SolutionDir)CloneCraft\includes\glm;$(SolutionDir)CloneCraft\includes\stb-master;$(SolutionDir)CloneCraft\includes\tinyobjloader-master;$(SolutionDir)CloneCraft\includes\boost;$(SolutionDir)CloneCraft\includes\LibNoise\include</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>$(SolutionDir)CloneCraft\includes\glfw\include;$(SolutionDir)CloneCraft\includes\glm;$(SolutionDir)CloneCraft\includes\stb-master;$(SolutionDir)CloneCraft\includes\tinyobjloader-master;$(SolutionDir)CloneCraft\includes\boost;$(SolutionDir)CloneCraft\includes\LibNoise\include;C:\SDKs\Vulkan\1.2.154.1\Include</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp14</LanguageStandard>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode>false</SupportJustMyCode>
+      <UseFullPaths>false</UseFullPaths>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)CloneCraft\lib\vulkan;$(SolutionDir)CloneCraft\lib\glfw;$(SolutionDir)CloneCraft\lib\LibNoise;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;libnoise.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\SDKs\Vulkan\1.2.154.1\Lib;C:\SDKs\Vulkan\1.2.154.1\Lib\$(Configuration);$(ProjectDir)lib\LibNoise;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib;shaderc_combined.lib;libnoise.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ProgramDatabaseFile>$(ProjectDir)$(Configuration)\CloneCraft.pdb</ProgramDatabaseFile>
+      <TargetMachine>MachineX64</TargetMachine>
     </Link>
+    <ProjectReference>
+      <LinkLibraryDependencies>true</LinkLibraryDependencies>
+    </ProjectReference>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>
+      </SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)CloneCraft\includes\vulkan\Include;$(SolutionDir)CloneCraft\includes\glfw\include;$(SolutionDir)CloneCraft\includes\glm;$(SolutionDir)CloneCraft\includes\stb-master;$(SolutionDir)CloneCraft\includes\tinyobjloader-master;$(SolutionDir)CloneCraft\includes\boost;$(SolutionDir)CloneCraft\includes\LibNoise\include</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>$(SolutionDir)CloneCraft\includes\glm;$(SolutionDir)CloneCraft\includes\stb-master;$(SolutionDir)CloneCraft\includes\tinyobjloader-master;$(SolutionDir)CloneCraft\includes\boost;$(SolutionDir)CloneCraft\includes\LibNoise\include;C:\SDKs\Vulkan\1.2.154.1\Include</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp14</LanguageStandard>
       <BrowseInformation>false</BrowseInformation>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode>false</SupportJustMyCode>
+      <UseFullPaths>false</UseFullPaths>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)CloneCraft\lib\vulkan;$(SolutionDir)CloneCraft\lib\glfw;$(SolutionDir)CloneCraft\lib\LibNoise;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;libnoise.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\SDKs\Vulkan\1.2.154.1\Lib;$(ProjectDir)lib\LibNoise;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib;libnoise.lib;shaderc_combinedd.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <PreventDllBinding>
       </PreventDllBinding>
-      <ProgramDatabaseFile>$(ProjectDir)$(IntermediateOutputPath)$(TargetName).pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>$(ProjectDir)$(Configuration)\CloneCraft.pdb</ProgramDatabaseFile>
     </Link>
     <Bscmake>
       <PreserveSbr>true</PreserveSbr>
@@ -123,106 +135,104 @@
     <PostBuildEvent>
       <Command>mkdir "$(OutDir)models"
 mkdir  "$(OutDir)textures"
-mkdir "$(OutDir)shaders"
 copy "$(ProjectDir)models\*" "$(OutDir)models"
 copy "$(ProjectDir)textures\*" "$(OutDir)textures"
-copy "$(ProjectDir)shaders\frag.spv" "$(OutDir)shaders"
-copy "$(ProjectDir)shaders\vert.spv" "$(OutDir)shaders"
 copy "$(SolutionDir)README.TXT" "$(OutDir)"</Command>
     </PostBuildEvent>
+    <ProjectReference>
+      <LinkLibraryDependencies>true</LinkLibraryDependencies>
+    </ProjectReference>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>
+      </SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)CloneCraft\includes\vulkan\Include;$(SolutionDir)CloneCraft\includes\glfw\include;$(SolutionDir)CloneCraft\includes\glm;$(SolutionDir)CloneCraft\includes\stb-master;$(SolutionDir)CloneCraft\includes\tinyobjloader-master;$(SolutionDir)CloneCraft\includes\boost;$(SolutionDir)CloneCraft\includes\LibNoise\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)CloneCraft\includes\glfw\include;$(SolutionDir)CloneCraft\includes\glm;$(SolutionDir)CloneCraft\includes\stb-master;$(SolutionDir)CloneCraft\includes\tinyobjloader-master;$(SolutionDir)CloneCraft\includes\boost;$(SolutionDir)CloneCraft\includes\LibNoise\include;C:\SDKs\Vulkan\1.2.154.1\Include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <DebugInformationFormat />
+      <UseFullPaths>false</UseFullPaths>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)CloneCraft\lib\vulkan;$(SolutionDir)CloneCraft\lib\glfw;$(SolutionDir)CloneCraft\lib\LibNoise\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\SDKs\Vulkan\1.2.154.1\Lib;C:\SDKs\Vulkan\1.2.154.1\Lib\$(Configuration);$(ProjectDir)lib\LibNoise\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;libnoise.lib%(AdditionalDependencies)</AdditionalDependencies>
+      <ProgramDatabaseFile>$(ProjectDir)$(Configuration)\CloneCraft.pdb</ProgramDatabaseFile>
+      <TargetMachine>MachineX64</TargetMachine>
+      <ImageHasSafeExceptionHandlers />
     </Link>
+    <ProjectReference>
+      <LinkLibraryDependencies>true</LinkLibraryDependencies>
+    </ProjectReference>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>
+      </SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)CloneCraft\includes\vulkan\Include;$(SolutionDir)CloneCraft\includes\glfw\include;$(SolutionDir)CloneCraft\includes\glm;$(SolutionDir)CloneCraft\includes\stb-master;$(SolutionDir)CloneCraft\includes\tinyobjloader-master;$(SolutionDir)CloneCraft\includes\boost;$(SolutionDir)CloneCraft\includes\LibNoise\include</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>$(SolutionDir)CloneCraft\includes\glm;$(SolutionDir)CloneCraft\includes\stb-master;$(SolutionDir)CloneCraft\includes\tinyobjloader-master;$(SolutionDir)CloneCraft\includes\boost;$(SolutionDir)CloneCraft\includes\LibNoise\include;C:\SDKs\Vulkan\1.2.154.1\Include</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp14</LanguageStandard>
+      <DebugInformationFormat />
+      <UseFullPaths>false</UseFullPaths>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)CloneCraft\lib\vulkan;$(SolutionDir)CloneCraft\lib\glfw;$(SolutionDir)CloneCraft\lib\LibNoise\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;libnoise.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <ProgramDatabaseFile>$(ProjectDir)$(IntermediateOutputPath)$(TargetName).pdb</ProgramDatabaseFile>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\SDKs\Vulkan\1.2.154.1\Lib;$(ProjectDir)lib\LibNoise\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib;libnoise.lib;shaderc_combined.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ProgramDatabaseFile>$(ProjectDir)$(Configuration)\CloneCraft.pdb</ProgramDatabaseFile>
     </Link>
     <PostBuildEvent>
       <Message>
       </Message>
       <Command>mkdir "$(OutDir)models"
 mkdir  "$(OutDir)textures"
-mkdir "$(OutDir)shaders"
 copy "$(ProjectDir)models\*" "$(OutDir)models"
 copy "$(ProjectDir)textures\*" "$(OutDir)textures"
-copy "$(ProjectDir)shaders\frag.spv" "$(OutDir)shaders"
-copy "$(ProjectDir)shaders\vert.spv" "$(OutDir)shaders"
 copy "$(SolutionDir)README.TXT" "$(OutDir)"</Command>
     </PostBuildEvent>
+    <ProjectReference>
+      <LinkLibraryDependencies>true</LinkLibraryDependencies>
+    </ProjectReference>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Block.cpp" />
-    <ClCompile Include="Camera.cpp" />
-    <ClCompile Include="Chunk.cpp" />
-    <ClCompile Include="Frustum.cpp" />
-    <ClCompile Include="Layer.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="noiseutils.cpp" />
-    <ClCompile Include="Player.cpp" />
-    <ClCompile Include="World.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="shaders\compile.bat" />
-    <None Include="Shaders\frag.spv" />
-    <None Include="shaders\shader.frag" />
-    <None Include="shaders\shader.vert" />
-    <None Include="Shaders\vert.spv" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="AABB.h" />
-    <ClInclude Include="AppConfig.h" />
-    <ClInclude Include="Block.h" />
-    <ClInclude Include="Camera.h" />
-    <ClInclude Include="Chunk.h" />
-    <ClInclude Include="CloneCraftApp.h" />
-    <ClInclude Include="Controller.h" />
-    <ClInclude Include="Entity.h" />
-    <ClInclude Include="Frustum.h" />
-    <ClInclude Include="glm.h" />
-    <ClInclude Include="Layer.h" />
-    <ClInclude Include="MatrixFunctions.h" />
+    <ClInclude Include="AABB.hpp" />
+    <ClInclude Include="AppGlobals.hpp" />
+    <ClInclude Include="Block.hpp" />
+    <ClInclude Include="Camera.hpp" />
+    <ClInclude Include="Chunk.hpp" />
+    <ClInclude Include="Layer.hpp" />
+    <ClInclude Include="Math.hpp" />
+    <ClInclude Include="Matrix.hpp" />
+    <ClInclude Include="Renderer.hpp" />
+    <ClInclude Include="Controller.hpp" />
+    <ClInclude Include="Entity.hpp" />
+    <ClInclude Include="Frustum.hpp" />
     <ClInclude Include="noiseutils.h" />
-    <ClInclude Include="Player.h" />
-    <ClInclude Include="Radian.h" />
-    <ClInclude Include="Ray.h" />
-    <ClInclude Include="TerrainGenerator.h" />
-    <ClInclude Include="UBO.h" />
-    <ClInclude Include="Vertex.h" />
-    <ClInclude Include="World.h" />
+    <ClInclude Include="Player.hpp" />
+    <ClInclude Include="Ray.hpp" />
+    <ClInclude Include="TerrainGenerator.hpp" />
+    <ClInclude Include="UBO.hpp" />
+    <ClInclude Include="Vector.hpp" />
+    <ClInclude Include="Vertex.hpp" />
+    <ClInclude Include="Window.hpp" />
+    <ClInclude Include="World.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
