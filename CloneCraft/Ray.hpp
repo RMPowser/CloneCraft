@@ -3,15 +3,18 @@
 
 class Ray {
 public:
-    Ray(GW::MATH::GVECTORF& position, GW::MATH::GVECTORF& direction) :
+    Ray(Vec4 position, Vec4 direction) :
         rayStart(position),
         rayEnd(position),
         direction(direction){
+        rayStart = position;
+        rayEnd = position;
+        this->direction = direction;
     }
 
-    void step(float scale) {
-        float yaw = AppGlobals::RADIAN * (direction.y + 90);
-        float pitch = AppGlobals::RADIAN * (direction.x);
+    void Step(float scale) {
+        float yaw = RADIAN * (direction.y + 90);
+        float pitch = RADIAN * (direction.x);
 
         rayEnd.x -= cos(yaw) * scale;
         rayEnd.z -= sin(yaw) * scale;
@@ -19,16 +22,16 @@ public:
         rayEnd.w = 0;
     }
 
-    GW::MATH::GVECTORF& getEnd() {
+    Vec4 GetEnd() {
         return rayEnd;
     }
 
-    float getLength() {
+    float GetLength() {
         return sqrtf(powf((rayStart.x - rayEnd.x), 2) + powf((rayStart.y - rayEnd.y), 2) + powf((rayStart.z - rayEnd.z), 2));
     }
 
 private:
-    GW::MATH::GVECTORF rayStart;
-    GW::MATH::GVECTORF rayEnd;
-    GW::MATH::GVECTORF direction;
+    Vec4 rayStart;
+    Vec4 rayEnd;
+    Vec4 direction;
 };

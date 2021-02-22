@@ -212,21 +212,26 @@ copy "$(SolutionDir)README.TXT" "$(OutDir)"</Command>
     <ClCompile Include="noiseutils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AABB.hpp" />
     <ClInclude Include="AppGlobals.hpp" />
     <ClInclude Include="Block.hpp" />
     <ClInclude Include="Camera.hpp" />
     <ClInclude Include="Chunk.hpp" />
+    <ClInclude Include="Layer.hpp" />
+    <ClInclude Include="Math.hpp" />
+    <ClInclude Include="Matrix.hpp" />
     <ClInclude Include="Renderer.hpp" />
     <ClInclude Include="Controller.hpp" />
     <ClInclude Include="Entity.hpp" />
     <ClInclude Include="Frustum.hpp" />
-    <ClInclude Include="Layer.hpp" />
     <ClInclude Include="noiseutils.h" />
     <ClInclude Include="Player.hpp" />
     <ClInclude Include="Ray.hpp" />
     <ClInclude Include="TerrainGenerator.hpp" />
     <ClInclude Include="UBO.hpp" />
+    <ClInclude Include="Vector.hpp" />
     <ClInclude Include="Vertex.hpp" />
+    <ClInclude Include="Window.hpp" />
     <ClInclude Include="World.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -1,8 +1,20 @@
 #include <array>
 
 class ViewFrustum {
+private:
+	GW::MATH::GPLANEF m_planes[6];
+
+	enum Planes {
+		Near,
+		Far,
+		Left,
+		Right,
+		Top,
+		Bottom,
+	};
+
 public:
-	void update(GW::MATH::GMATRIXF& mat) // pass projViewMatrix to this function
+	void update(Mat4& mat) // pass projViewMatrix to this function
 	{
 		// left
 		m_planes[Planes::Left].distance = mat.row4.data[3] + mat.row4.data[0];
@@ -42,9 +54,8 @@ public:
 
 		for (auto& plane : m_planes)
 		{
-			float length;
-			GW::MATH::GVECTORF normal{ plane.x, plane.y, plane.z, 0 };
-			GW::MATH::GVector::MagnitudeF(normal, length);
+			Vec4 normal( plane.x, plane.y, plane.z, 0.f );
+			float length = normal.Magnitude();
 			normal.x /= length;
 			normal.y /= length;
 			normal.z /= length;
@@ -52,23 +63,23 @@ public:
 		}
 	}
 
-	bool isBoxInFrustum(GW::MATH::GAABBCEF& box)
+	bool isBoxInFrustum(AABB& box)
 	{
 		auto getVNegative = [&](GW::MATH::GVECTORF& normal)
 		{
-			GW::MATH::GVECTORF res = box.center;
+			GW::MATH::GVECTORF res = { box.position.x, box.position.y, box.position.z, box.position.w };
 
 			if (normal.x < 0)
 			{
-				res.x += box.extent.x;
+				res.x += box.dimensions.x;
 			}
 			if (normal.y < 0)
 			{
-				res.y += box.extent.y;
+				res.y += box.dimensions.y;
 			}
 			if (normal.z < 0)
 			{
-				res.z += box.extent.z;
+				res.z += box.dimensions.z;
 			}
 
 			return res;
@@ -76,19 +87,19 @@ public:
 
 		auto getVPositive = [&](GW::MATH::GVECTORF& normal)
 		{
-			GW::MATH::GVECTORF res = box.center;
+			GW::MATH::GVECTORF res = { box.position.x, box.position.y, box.position.z, box.position.w };
 
 			if (normal.x > 0)
 			{
-				res.x += box.extent.x;
+				res.x += box.dimensions.x;
 			}
 			if (normal.y > 0)
 			{
-				res.y += box.extent.y;
+				res.y += box.dimensions.y;
 			}
 			if (normal.z > 0)
 			{
-				res.z += box.extent.z;
+				res.z += box.dimensions.z;
 			}
 
 			return res;
@@ -99,7 +110,7 @@ public:
 		for (auto& plane : m_planes)
 		{
 			float sqDistanceToPoint;
-			GW::MATH::GVECTORF normal{ plane.x, plane.y, plane.z, 0 };
+			GW::MATH::GVECTORF normal = { plane.x, plane.y, plane.z, 0.f };
 			GW::MATH::GCollision::SqDistancePointToPlaneF(getVPositive(normal), plane, sqDistanceToPoint);
 
 			if (sqDistanceToPoint < 0)
@@ -155,17 +166,4 @@ public:
 	{
 		return !(*this == other);
 	}
-
-private:
-	GW::MATH::GPLANEF m_planes[6];
-
-	enum Planes
-	{
-		Near,
-		Far,
-		Left,
-		Right,
-		Top,
-		Bottom,
-	};
 };

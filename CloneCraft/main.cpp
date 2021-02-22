@@ -4,69 +4,41 @@
 #include <crtdbg.h>
 #endif
 
-#define GATEWARE_ENABLE_CORE
-#define GATEWARE_ENABLE_SYSTEM
-#define GATEWARE_ENABLE_GRAPHICS
-#define GATEWARE_ENABLE_AUDIO
-#define GATEWARE_ENABLE_MATH
-#define GATEWARE_ENABLE_INPUT
-#include "../Gateware/Gateware.h"
 #include "AppGlobals.hpp"
 #include "Renderer.hpp"
-
-void PrintDebugInfo(const char* format, ...)
-{
-	#ifndef NDEBUG
-	va_list args;
-	va_start(args, format);
-	vprintf(format, args);
-	va_end(args);
-	#endif
-}
 
 int main() {
 	#ifndef NDEBUG
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 	#endif
 
-	GW::SYSTEM::GWindow window;
-	GW::CORE::GEventReceiver windowEvents;
-	GW::GRAPHICS::GVulkanSurface vulkan;
+	auto& window = AppGlobals::window;
 
 	try {
-		PrintDebugInfo("Creating GWindow...\n");
-		if (+window.Create(200, 200, AppGlobals::windowX, AppGlobals::windowY, GW::SYSTEM::GWindowStyle::WINDOWEDBORDERED)) {
-			PrintDebugInfo("Setting GWindow title...\n");
-			window.SetWindowName(AppGlobals::windowTitle.c_str());
-			windowEvents.Create(window, [&]() {});
+		Renderer renderer;
 
-			unsigned long long bitmask = GW::GRAPHICS::GGraphicsInitOptions::DEPTH_BUFFER_SUPPORT | GW::GRAPHICS::GGraphicsInitOptions::DEPTH_STENCIL_SUPPORT;
+		std::array<VkClearValue, 2> clearValues{};
+		clearValues[0].color = { (70.0f / 255), (160.0f / 255), (255.0f / 255), (255.0f / 255) };
+		clearValues[1].depthStencil = { 1.0f, 0 };
 
-			PrintDebugInfo("Creating GVulkanSurface...\n");
-			#ifndef NDEBUG
-			if (+vulkan.Create(window, bitmask, AppGlobals::validationLayers.size(), AppGlobals::validationLayers.data(), 0, nullptr, AppGlobals::deviceExtensions.size(), AppGlobals::deviceExtensions.data(), true))
-			#else
-			if (+vulkan.Create(window, bitmask))
-			#endif
-			{
-				Renderer renderer(window, vulkan);
+		static auto startTime = std::chrono::high_resolution_clock::now();
+		while (window.ProcessWindowEvents()) {
+			if (window.IsFocus()) {
+				ShowCursor(false);
+				auto currentTime = std::chrono::high_resolution_clock::now();
+				float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+				startTime = std::chrono::high_resolution_clock::now();
 
-				std::array<VkClearValue, 2> clearValues{};
-				clearValues[0].color = { (70.0f / 255), (160.0f / 255), (255.0f / 255), (255.0f / 255) };
-				clearValues[1].depthStencil = { 1.0f, 0 };
-
-				static auto startTime = std::chrono::high_resolution_clock::now();
-				while (+window.ProcessWindowEvents()) {
-					auto currentTime = std::chrono::high_resolution_clock::now();
-					float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-					startTime = std::chrono::high_resolution_clock::now();
-
-					renderer.Update(time);
-					if (+vulkan.StartFrame(clearValues.size(), clearValues.data())) {
+				if (time < 0.1f) {
+					renderer.update(time);
+					if (+window.vulkan.StartFrame(clearValues.size(), clearValues.data())) {
 						renderer.Render(time);
-						vulkan.EndFrame(true);
+						window.vulkan.EndFrame(true);
 					}
 				}
+			}
+			else {
+				ShowCursor(true);
 			}
 		}
 	

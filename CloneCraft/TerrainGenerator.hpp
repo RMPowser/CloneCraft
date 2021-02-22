@@ -69,13 +69,13 @@ private:
 
 				float rmin = 0;
 				float rmax = 255;
-				uint8_t tmin = 0;
-				uint8_t tmax = 127;
+				unsigned char tmin = 0;
+				unsigned char tmax = 127;
 				float m = img.GetValue(x, y).red;
 
 				float slope = 1 * (tmax - tmin) / (rmax - rmin);
 
-				uint8_t newValue = tmin + floorf((slope * (m - rmin)) + 0.5f);
+				unsigned char newValue = tmin + floorf((slope * (m - rmin)) + 0.5f);
 				utils::Color newColor(newValue, newValue, newValue, 255);
 				
 				img.SetValue(x, y, newColor);

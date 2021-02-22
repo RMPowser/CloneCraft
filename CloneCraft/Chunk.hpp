@@ -4,32 +4,29 @@
 class Chunk {
 public:
 	Layer layers[256];
-	GW::MATH::GVECTORF position;
+	Vec4 position;
 	std::vector<Vertex> vertices;
 	std::vector<unsigned int> indices;
-	GW::MATH::GAABBMMF bbox;
 	bool isLoaded = false;
 
 
 	Chunk() {}
-	Chunk(GW::MATH::GVECTORF pos) {
-		position = { floor(pos.x), 0, floor(pos.z), 0 }; // chunks never have a y position
-		bbox.min = position;
-		bbox.max = { AppGlobals::CHUNK_WIDTH / 2, AppGlobals::CHUNK_HEIGHT, AppGlobals::CHUNK_WIDTH / 2, 0 };
+	Chunk(Vec4 pos) {
+		position = Vec4((int)pos.x, 0, (int)pos.z, 0); // chunks never have a y position
 	}
 	~Chunk() {}
 
-	BlockId getBlock(GW::MATH::GVECTORF blockPos) {
-		if (isBlockOutOfBounds(blockPos)) {
+	BlockId getBlock(Vec4 blockPos) {
+		if (IsBlockOutOfBounds(blockPos)) {
 			return BlockId::Air;
 		}
 
-		return layers[static_cast<int>(blockPos.y)].getBlock(blockPos);
+		return layers[(int)blockPos.y].GetBlock(blockPos);
 	}
 
-	bool setBlock(BlockId id, GW::MATH::GVECTORF blockPos) {
-		if (!isBlockOutOfBounds(blockPos)) {
-			if (layers[static_cast<int>(blockPos.y)].setBlock(id, blockPos)) {
+	bool SetBlock(BlockId id, Vec4 blockPos) {
+		if (!IsBlockOutOfBounds(blockPos)) {
+			if (layers[(int)blockPos.y].SetBlock(id, blockPos)) {
 				return true;
 			}
 		}
@@ -37,7 +34,7 @@ public:
 		return false;
 	}
 
-	bool isBlockOutOfBounds(GW::MATH::GVECTORF blockPos) {
+	bool IsBlockOutOfBounds(Vec4 blockPos) {
 		if (blockPos.x >= AppGlobals::CHUNK_WIDTH)
 			return true;
 		if (blockPos.z >= AppGlobals::CHUNK_WIDTH)

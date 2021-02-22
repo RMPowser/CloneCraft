@@ -57,10 +57,25 @@
     <ClInclude Include="Chunk.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="Block.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
     <ClInclude Include="Layer.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="Block.hpp">
+    <ClInclude Include="Window.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Math.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Vector.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Matrix.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="AABB.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

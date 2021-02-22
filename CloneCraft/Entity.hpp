@@ -1,60 +1,62 @@
 #pragma once
 
+class Entity {
+public:
+	Vec4 position = { 0, 0, 0, 0 };
+	Vec4 rotation = { 0, 0, 0, 0 }; // the forward direction expressed as an angle of rotation around each axis
+	AABB bbox = AABB(Vec4(0, 0, 0, 0), Vec4(0, 0, 0, 0));
+	float height = 1.75f;
+	float width = 0.25f;
 
-struct Entity 
-{
-	GW::MATH::GVECTORF position;
-	GW::MATH::GVECTORF rotation;
-	GW::MATH::GVECTORF velocity;
-	GW::MATH::GAABBMMF bbox;
+	Entity() {}
 
-	Entity() :
-		bbox({ 0, 0, 0, 0, 0, 0 }),
-		position(GW::MATH::GZeroVectorF),
-		rotation(GW::MATH::GZeroVectorF),
-		velocity(GW::MATH::GZeroVectorF){
+	Entity(Vec4 pos) {
+		position = pos;
 	}
 
-	Entity(const GW::MATH::GVECTORF pos, const GW::MATH::GVECTORF& rot) :
-		bbox({ 0, 0, 0, 0, 0, 0 }),
-		position(pos),
-		rotation(rot),
-		velocity(GW::MATH::GZeroVectorF) {
+	Entity(Vec4 pos, Vec4 rot) {
+		position = pos;
+		rotation = rot;
 	}
 
-	Entity(const GW::MATH::GVECTORF& pos, const GW::MATH::GVECTORF& rot, const GW::MATH::GAABBMMF& _bbox) :
-		bbox(_bbox),
-		position(pos),
-		rotation(rot),
-		velocity(GW::MATH::GZeroVectorF) {
+	Entity(Vec4 pos, Vec4 rot, AABB box) {
+		position = pos;
+		rotation = rot;
+		bbox = box;
 	}
 
-	bool operator==(const Entity& other) const
-	{
-		return (position.x == other.position.x &&
-				position.y == other.position.y &&
-				position.z == other.position.z &&
-				position.w == other.position.w &&
-				rotation.x == other.rotation.x &&
-				rotation.y == other.rotation.y &&
-				rotation.z == other.rotation.z &&
-				rotation.w == other.rotation.w &&
-				velocity.x == other.velocity.x &&
-				velocity.y == other.velocity.y &&
-				velocity.z == other.velocity.z &&
-				velocity.w == other.velocity.w &&
-				bbox.min.x == other.bbox.min.x &&
-				bbox.min.y == other.bbox.min.y &&
-				bbox.min.z == other.bbox.min.z &&
-				bbox.min.w == other.bbox.min.w &&
-				bbox.max.x == other.bbox.max.x &&
-				bbox.max.y == other.bbox.max.y &&
-				bbox.max.z == other.bbox.max.z &&
-				bbox.max.w == other.bbox.max.w);
+	Vec4 GetForwardAxis() {
+		float a = rotation.y * RADIAN;
+		Vec4 r{ 0, 0, 1, 0 }; // +z axis is forward
+
+		Mat4 rotateY = {	 cos(a),	 0,	 sin(a),     0,
+								  0,	 1,		  0,     0,
+							-sin(a),	 0,	 cos(a),     0,
+								  0,     0,       0,     1 };
+
+		r = VectorXMatrix(r, rotateY);
+		return r;
 	}
 
-	bool operator!=(const Entity& other) const
-	{
+	Vec4 GetRightAxis() {
+		Vec4 forwardAxis = GetForwardAxis();
+		return forwardAxis.Cross(Vec4(0, 1, 0, 0));
+	}
+
+	Vec4 GetUpAxis() {
+		Vec4 forwardAxis = GetForwardAxis();
+		Vec4 rightAxis = forwardAxis.Cross(Vec4(0, 1, 0, 0));
+		return forwardAxis.Cross(rightAxis);
+	}
+
+	bool operator==(const Entity& other) const {
+		return (position == other.position &&
+				bbox == other.bbox &&
+				height == other.height &&
+				width == other.width);
+	}
+
+	bool operator!=(const Entity& other) const {
 		return !(*this == other);
 	}
 };

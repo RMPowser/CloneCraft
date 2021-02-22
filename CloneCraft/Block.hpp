@@ -18,10 +18,7 @@ struct BlockTexture {
 	unsigned char* image = nullptr;
 };
 
-
-/// <summary>
-/// All the different types of blocks in the game.
-/// </summary>
+// All the different types of blocks in the game.
 enum class BlockId : unsigned char {
 	Air = 0,
 	Grass = 1,
@@ -30,47 +27,6 @@ enum class BlockId : unsigned char {
 };
 
 class BlockData {
-public:
-	BlockData()
-	{
-		id = BlockId::Air;
-	}
-
-	BlockData(BlockId _id)
-	{
-		id = _id;
-		std::string modelPath;
-		std::string texturePath;
-
-		switch (id)
-		{
-			case BlockId::Air:
-				modelPath = "";
-				texturePath = "";
-				collidable = false;
-				break;
-			case BlockId::Grass:
-				modelPath = "models/Block.obj";
-				texturePath = "textures/GrassBlock.png";
-				collidable = true;
-				break;
-			default:
-				throw std::runtime_error("Failed to create block data: invalid block id.");
-				break;
-		}
-
-		generateBlockData(modelPath, texturePath);
-	}
-
-	~BlockData() {}
-
-
-	BlockId& getId() { return id; }
-	BlockTexture& getTexture() { return texture; }
-	std::vector<Vertex>& getVertices() { return vertices; }
-	std::vector<unsigned int>& getIndices() { return indices; }
-	bool isCollidable() { return collidable; }
-
 private:
 	BlockId id;
 	BlockTexture texture;
@@ -93,10 +49,10 @@ private:
 
 		if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, modelPath.c_str()))
 		{
-			throw std::runtime_error(warn + err);
+			throw std::exception((warn + err).c_str());
 		}
 
-		std::unordered_map<Vertex, uint32_t> uniqueVertices{};
+		std::unordered_map<Vertex, unsigned int> uniqueVertices{};
 
 		for (const auto& shape : shapes)
 		{
@@ -107,19 +63,22 @@ private:
 				vertex.pos = {
 					attrib.vertices[3 * index.vertex_index + 0],
 					attrib.vertices[3 * index.vertex_index + 1],
-					attrib.vertices[3 * index.vertex_index + 2]
+					attrib.vertices[3 * index.vertex_index + 2],
+					0.f
 				};
 
 				vertex.texCoord = {
 					attrib.texcoords[2 * index.texcoord_index + 0],
-					1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
+					1.0f - attrib.texcoords[2 * index.texcoord_index + 1],
+					0.f,
+					0.f
 				};
 
-				vertex.color = { 1.0f, 1.0f, 1.0f };
+				//vertex.color = { 1.0f, 1.0f, 1.0f };
 
-				if (uniqueVertices.count(vertex) == 0)
+				if (uniqueVertices.find(vertex) == uniqueVertices.end())
 				{
-					uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
+					uniqueVertices[vertex] = (int)vertices.size();
 					vertices.push_back(vertex);
 				}
 
@@ -145,7 +104,7 @@ private:
 
 		if (!image)
 		{
-			throw std::runtime_error("failed to load texture image!");
+			throw std::exception("failed to load texture image!");
 		}
 		texture.width = texWidth;
 		texture.height = texHeight;
@@ -153,6 +112,48 @@ private:
 		texture.size = texWidth * texHeight * channelsToLoad;
 		texture.image = image;
 	}
+
+public:
+	BlockData()
+	{
+		id = BlockId::Air;
+	}
+
+	BlockData(BlockId _id)
+	{
+		id = _id;
+		std::string modelPath;
+		std::string texturePath;
+
+		switch (id)
+		{
+			case BlockId::Air:
+				modelPath = "";
+				texturePath = "";
+				collidable = false;
+				break;
+			case BlockId::Grass:
+				modelPath = "models/Block.obj";
+				texturePath = "textures/GrassBlock.png";
+				collidable = true;
+				break;
+			default:
+				throw std::exception("Failed to create block data: invalid block id.");
+				break;
+		}
+
+		generateBlockData(modelPath, texturePath);
+	}
+
+	~BlockData() {}
+
+
+
+	BlockId& getId() { return id; }
+	BlockTexture& getTexture() { return texture; }
+	std::vector<Vertex>& getVertices() { return vertices; }
+	std::vector<unsigned int>& getIndices() { return indices; }
+	bool isCollidable() { return collidable; }
 };
 
 

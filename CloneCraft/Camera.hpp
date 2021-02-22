@@ -2,146 +2,83 @@
 #include "Entity.hpp"
 #include "Frustum.hpp"
 
+class Camera : public Entity {
+	Entity* pEntity;
+	ViewFrustum frustum;
+	Mat4 projMatrix;
+	Mat4 viewMatrix;
+	Mat4 projViewMatrix;
 
-static GW::MATH::GMATRIXF makeObjMatrix(Entity& entity)
-{
-    GW::MATH::GMATRIXF matrix{ GW::MATH::GIdentityMatrixF };
-
-    GW::MATH::GMatrix::RotateXLocalF(matrix, entity.rotation.x * AppGlobals::RADIAN, matrix);
-    GW::MATH::GMatrix::RotateYLocalF(matrix, entity.rotation.y * AppGlobals::RADIAN, matrix);
-    GW::MATH::GMatrix::RotateZLocalF(matrix, entity.rotation.z * AppGlobals::RADIAN, matrix);
-
-    GW::MATH::GMatrix::TranslateLocalF(matrix, entity.position, matrix);
-
-    return matrix;
-}
-
-static GW::MATH::GMATRIXF makeViewMatrix(Entity& entity)
-{
-    GW::MATH::GMATRIXF matrix(GW::MATH::GIdentityMatrixF);
-
-    GW::MATH::GMatrix::RotateXLocalF(matrix, entity.rotation.x * AppGlobals::RADIAN, matrix);
-    GW::MATH::GMatrix::RotateYLocalF(matrix, entity.rotation.y * AppGlobals::RADIAN, matrix);
-    GW::MATH::GMatrix::RotateZLocalF(matrix, entity.rotation.z * AppGlobals::RADIAN, matrix);
-
-    GW::MATH::GMatrix::TranslateLocalF(matrix, GW::MATH::GVECTORF{ -entity.position.x, -entity.position.y, -entity.position.z, 0 }, matrix);
-
-    return matrix;
-}
-
-static GW::MATH::GMATRIXF makeProjectionMatrix()
-{
-    float x = (float)AppGlobals::windowX;
-    float y = (float)AppGlobals::windowY;
-    float aspect = x / y;
-    float fov = AppGlobals::FOV * AppGlobals::RADIAN;
-    float zNear = 0.1;
-    float zFar = 2000;
-
-    GW::MATH::GMATRIXF Result;
-    GW::MATH::GMatrix::ProjectionVulkanRHF(fov, aspect, zNear, zFar, Result);
-
-    return Result;
-}
-
-class Camera : public Entity
-{
 public:
-    Camera()
-    {
-        m_projectionMatrix = makeProjectionMatrix();
-        position = { 0, 0, 0, 0 };
-    }
+	static Mat4 VulkanProjectionMatrix() {
+		float fovYRadians = AppGlobals::FOV * RADIAN;
+		float aspectRatio = (float)AppGlobals::window.GetClientWidth() / (float)AppGlobals::window.GetClientHeight();
+		float zNear = 0.1;
+		float zFar = 2000;
 
-    void update()
-    {
-        position = m_pEntity->position;
-        rotation = m_pEntity->rotation;
+		static GW::MATH::GMATRIXF r;
+		GW::MATH::GMatrix::ProjectionVulkanRHF(fovYRadians, aspectRatio, zNear, zFar, r);
+		return Mat4(r.row1.x, r.row1.y, r.row1.z, r.row1.w,
+					r.row2.x, r.row2.y, r.row2.z, r.row2.w, 
+					r.row3.x, r.row3.y, r.row3.z, r.row3.w, 
+					r.row4.x, r.row4.y, r.row4.z, r.row4.w);
+	}
 
-        m_viewMatrix = makeViewMatrix(*this);
-        GW::MATH::GMatrix::MultiplyMatrixF(m_projectionMatrix, m_viewMatrix, m_projViewMatrx);
-        m_frustum.update(m_projViewMatrx);
-    }
+	static Mat4 MakeObjMatrix(Entity& entity) {
+		Mat4 m = Mat4::IdentityMatrix();
+		m.LocalRotateX(entity.rotation.x * RADIAN);
+		m.LocalRotateY(entity.rotation.y * RADIAN);
+		m.LocalRotateZ(entity.rotation.z * RADIAN);
+		m.Translate(entity.position);
+		return m;
+	}
 
-    void hookEntity(Entity& entity)
-    {
-        m_pEntity = &entity;
-    }
+	static Mat4 MakeViewMatrix(Entity& entity) {
+		Mat4 m = Mat4::IdentityMatrix();
+		m.LocalRotateX(entity.rotation.x * RADIAN);
+		m.LocalRotateY(entity.rotation.y * RADIAN);
+		m.LocalRotateZ(entity.rotation.z * RADIAN);
+		m.Translate(Vec4(-entity.position.x, -entity.position.y, -entity.position.z, 0.f));
+		return m;
+	}
 
-    GW::MATH::GMATRIXF& getViewMatrix() { return m_viewMatrix; }
-    GW::MATH::GMATRIXF& getProjMatrix() { return m_projectionMatrix; }
-    GW::MATH::GMATRIXF& getProjectionViewMatrix() { return m_projViewMatrx; }
-    void recreateProjectionMatrix() { m_projectionMatrix = makeProjectionMatrix(); }
+	Camera() {
+		projMatrix = VulkanProjectionMatrix();
+	}
 
-    ViewFrustum& getFrustum() { return m_frustum; }
+	void Update() {
+		assert(pEntity);
+		position = pEntity->position;
+		position.y += pEntity->height - 0.05f;
+		rotation.y = pEntity->rotation.y;
 
-    bool operator==(const Camera& other) const
-    {
-        return (m_pEntity == other.m_pEntity &&
-                m_frustum == other.m_frustum &&
-                m_projectionMatrix.row1.x == other.m_projectionMatrix.row1.x &&
-                m_projectionMatrix.row1.y == other.m_projectionMatrix.row1.y &&
-                m_projectionMatrix.row1.z == other.m_projectionMatrix.row1.z &&
-                m_projectionMatrix.row1.w == other.m_projectionMatrix.row1.w &&
-                m_projectionMatrix.row2.x == other.m_projectionMatrix.row2.x &&
-                m_projectionMatrix.row2.y == other.m_projectionMatrix.row2.y &&
-                m_projectionMatrix.row2.z == other.m_projectionMatrix.row2.z &&
-                m_projectionMatrix.row2.w == other.m_projectionMatrix.row2.w &&
-                m_projectionMatrix.row3.x == other.m_projectionMatrix.row3.x &&
-                m_projectionMatrix.row3.y == other.m_projectionMatrix.row3.y &&
-                m_projectionMatrix.row3.z == other.m_projectionMatrix.row3.z &&
-                m_projectionMatrix.row3.w == other.m_projectionMatrix.row3.w &&
-                m_projectionMatrix.row4.x == other.m_projectionMatrix.row4.x &&
-                m_projectionMatrix.row4.y == other.m_projectionMatrix.row4.y &&
-                m_projectionMatrix.row4.z == other.m_projectionMatrix.row4.z &&
-                m_projectionMatrix.row4.w == other.m_projectionMatrix.row4.w &&
-                
-                m_viewMatrix.row1.x == other.m_viewMatrix.row1.x &&
-                m_viewMatrix.row1.y == other.m_viewMatrix.row1.y &&
-                m_viewMatrix.row1.z == other.m_viewMatrix.row1.z &&
-                m_viewMatrix.row1.w == other.m_viewMatrix.row1.w &&
-                m_viewMatrix.row2.x == other.m_viewMatrix.row2.x &&
-                m_viewMatrix.row2.y == other.m_viewMatrix.row2.y &&
-                m_viewMatrix.row2.z == other.m_viewMatrix.row2.z &&
-                m_viewMatrix.row2.w == other.m_viewMatrix.row2.w &&
-                m_viewMatrix.row3.x == other.m_viewMatrix.row3.x &&
-                m_viewMatrix.row3.y == other.m_viewMatrix.row3.y &&
-                m_viewMatrix.row3.z == other.m_viewMatrix.row3.z &&
-                m_viewMatrix.row3.w == other.m_viewMatrix.row3.w &&
-                m_viewMatrix.row4.x == other.m_viewMatrix.row4.x &&
-                m_viewMatrix.row4.y == other.m_viewMatrix.row4.y &&
-                m_viewMatrix.row4.z == other.m_viewMatrix.row4.z &&
-                m_viewMatrix.row4.w == other.m_viewMatrix.row4.w &&
-                
-                m_projViewMatrx.row1.x == other.m_projViewMatrx.row1.x &&
-                m_projViewMatrx.row1.y == other.m_projViewMatrx.row1.y &&
-                m_projViewMatrx.row1.z == other.m_projViewMatrx.row1.z &&
-                m_projViewMatrx.row1.w == other.m_projViewMatrx.row1.w &&
-                m_projViewMatrx.row2.x == other.m_projViewMatrx.row2.x &&
-                m_projViewMatrx.row2.y == other.m_projViewMatrx.row2.y &&
-                m_projViewMatrx.row2.z == other.m_projViewMatrx.row2.z &&
-                m_projViewMatrx.row2.w == other.m_projViewMatrx.row2.w &&
-                m_projViewMatrx.row3.x == other.m_projViewMatrx.row3.x &&
-                m_projViewMatrx.row3.y == other.m_projViewMatrx.row3.y &&
-                m_projViewMatrx.row3.z == other.m_projViewMatrx.row3.z &&
-                m_projViewMatrx.row3.w == other.m_projViewMatrx.row3.w &&
-                m_projViewMatrx.row4.x == other.m_projViewMatrx.row4.x &&
-                m_projViewMatrx.row4.y == other.m_projViewMatrx.row4.y &&
-                m_projViewMatrx.row4.z == other.m_projViewMatrx.row4.z &&
-                m_projViewMatrx.row4.w == other.m_projViewMatrx.row4.w);
-    }
+		viewMatrix = MakeViewMatrix(*this);
+		projViewMatrix = projMatrix * viewMatrix;
+		frustum.update(projViewMatrix);
+	}
 
-    bool operator!=(const Camera& other) const
-    {
-        return !(*this == other);
-    }
+	void HookEntity(Entity& entity) {
+		pEntity = &entity;
+	}
 
-private:
-    Entity* m_pEntity;
+	void RecreateProjectionMatrix() {
+		projMatrix = VulkanProjectionMatrix();
+	}
 
-    ViewFrustum m_frustum;
+	Mat4& getViewMatrix()			{ return viewMatrix; }
+	Mat4& getProjMatrix()			{ return projMatrix; }
+	Mat4& getProjectionViewMatrix()	{ return projViewMatrix; }
+	ViewFrustum& getFrustum()		{ return frustum; }
 
-    GW::MATH::GMATRIXF m_projectionMatrix;
-    GW::MATH::GMATRIXF m_viewMatrix;
-    GW::MATH::GMATRIXF m_projViewMatrx;
+	bool operator==(const Camera& other) const {
+		return (pEntity == other.pEntity &&
+				frustum == other.frustum &&
+				projMatrix == other.projMatrix &&
+				viewMatrix == other.viewMatrix &&
+				projViewMatrix == other.projViewMatrix);
+	}
+
+	bool operator!=(const Camera& other) const {
+		return !(*this == other);
+	}
 };

@@ -12,7 +12,6 @@ public:
 	BlockDatabase blockdb;
 	bool verticesAndIndicesUpdated = false;
 
-
 	World() {}
 	~World() {}
 
@@ -40,33 +39,33 @@ public:
 		}
 	}
 
-	static GW::MATH::GVECTORF getBlockXZ(GW::MATH::GVECTORF worldCoords) {
-		return { static_cast<float>(static_cast<int>(worldCoords.x) % AppGlobals::CHUNK_WIDTH), worldCoords.y, static_cast<float>(static_cast<int>(worldCoords.z) % AppGlobals::CHUNK_WIDTH), worldCoords.w };
+	static Vec4 getBlockXZ(Vec4 worldCoords) {
+		return Vec4((int)worldCoords.x % AppGlobals::CHUNK_WIDTH, (int)worldCoords.y, (int)worldCoords.z % AppGlobals::CHUNK_WIDTH, (int)worldCoords.w);
 	}
 
-	static GW::MATH::GVECTORF getChunkXZ(GW::MATH::GVECTORF worldCoords) {
-		return { static_cast<float>(static_cast<int>(worldCoords.x) / AppGlobals::CHUNK_WIDTH), 0, static_cast<float>(static_cast<int>(worldCoords.z) / AppGlobals::CHUNK_WIDTH), worldCoords.w };
+	static Vec4 getChunkXZ(Vec4 worldCoords) {
+		return Vec4((int)worldCoords.x / AppGlobals::CHUNK_WIDTH, 0, (int)worldCoords.z / AppGlobals::CHUNK_WIDTH, (int)worldCoords.w);
 	}
 
-	BlockId getBlock(GW::MATH::GVECTORF blockPos) {
+	BlockId getBlock(Vec4 blockPos) {
 		auto blockPosition = getBlockXZ(blockPos);
 		auto chunkPosition = getChunkXZ(blockPos);
 
 		return getChunk(chunkPosition)->getBlock(blockPosition);
 	}
 
-	bool setBlock(BlockId id, GW::MATH::GVECTORF blockPos) {
+	bool setBlock(BlockId id, Vec4 blockPos) {
 		auto blockPosition = getBlockXZ(blockPos);
 		auto chunkPosition = getChunkXZ(blockPos);
 
-		if (getChunk(chunkPosition)->setBlock(id, blockPosition)) {
+		if (getChunk(chunkPosition)->SetBlock(id, blockPosition)) {
 			return true;
 		}
 
 		return false;
 	}
 
-	Chunk* getChunk(GW::MATH::GVECTORF chunkPos) {
+	Chunk* getChunk(Vec4 chunkPos) {
 		if (!chunkExistsAt(chunkPos)) {
 			Chunk chunk(chunkPos);
 			chunkMap.emplace(chunkPos, chunk);
@@ -75,7 +74,7 @@ public:
 		return &chunkMap[chunkPos];
 	}
 
-	void initChunk(GW::MATH::GVECTORF chunkPos) {
+	void initChunk(Vec4 chunkPos) {
 		auto chunk = getChunk(chunkPos);
 
 		// generate the terrain image
@@ -84,9 +83,8 @@ public:
 		// sample the image at x and z coords to get y coord
 		for (int x = 0; x < AppGlobals::CHUNK_WIDTH; x++) {
 			for (int z = 0; z < AppGlobals::CHUNK_WIDTH; z++) {
-				int y = 0; // image->GetValue(x, z).red;
-				chunk->setBlock(BlockId::Grass, { static_cast<float>(x), static_cast<float>(y), static_cast<float>(z), 0});
-				//chunk->setBlock(BlockId::Grass, {static_cast<float>(x), static_cast<float>(y), static_cast<float>(z), 0});
+				int y = image->GetValue(x, z).red;
+				chunk->SetBlock(BlockId::Grass, Vec4(x, y, z, 0));
 			}
 		}
 
@@ -104,24 +102,24 @@ public:
 		generateVerticesAndIndices(chunkPos);
 	}
 
-	void updateChunk(GW::MATH::GVECTORF chunkPos) {
+	void updateChunk(Vec4 chunkPos) {
 		generateVerticesAndIndices(chunkPos);
 		forceVertexUpdate = true;
 	}
 
 private:
 	TerrainGenerator terrainGenerator;
-	std::vector<GW::MATH::GVECTORF> chunkLoadList;
-	std::vector<GW::MATH::GVECTORF> visibleChunksList;
-	std::vector<GW::MATH::GVECTORF> renderableChunksList;
-	std::vector<GW::MATH::GVECTORF> chunkUnloadList;
-	GW::MATH::GVECTORF camPositionOld;
-	GW::MATH::GVECTORF camPositionNew;
-	GW::MATH::GVECTORF camChunkCoordsOld;
-	GW::MATH::GVECTORF camChunkCoordsNew;
+	std::vector<Vec4> chunkLoadList;
+	std::vector<Vec4> visibleChunksList;
+	std::vector<Vec4> renderableChunksList;
+	std::vector<Vec4> chunkUnloadList;
+	Vec4 camPositionOld;
+	Vec4 camPositionNew;
+	Vec4 camChunkCoordsOld;
+	Vec4 camChunkCoordsNew;
 	ViewFrustum camFrustum;
 
-	std::unordered_map<GW::MATH::GVECTORF, Chunk> chunkMap;
+	std::unordered_map<Vec4, Chunk> chunkMap;
 	bool forceVertexUpdate = false;
 
 
@@ -129,8 +127,8 @@ private:
 		int numOfChunksLoaded = 0;
 
 		// set bounds of how far out to render based on what chunk the player is in
-		GW::MATH::GVECTORF lowChunkXZ = { floor(camChunkCoordsNew.x) - AppGlobals::renderDistance, 0, floor(camChunkCoordsNew.z) - AppGlobals::renderDistance, 0 };
-		GW::MATH::GVECTORF highChunkXZ = { floor(camChunkCoordsNew.x) + AppGlobals::renderDistance, 0, floor(camChunkCoordsNew.z) + AppGlobals::renderDistance, 0 };
+		Vec4 lowChunkXZ(floor(camChunkCoordsNew.x) - AppGlobals::renderDistance, 0.f, floor(camChunkCoordsNew.z) - AppGlobals::renderDistance, 0.f);
+		Vec4 highChunkXZ(floor(camChunkCoordsNew.x) + AppGlobals::renderDistance, 0.f, floor(camChunkCoordsNew.z) + AppGlobals::renderDistance, 0.f);
 
 		// precompute squared render distance
 		float sqRenderDistance = AppGlobals::renderDistance * AppGlobals::renderDistance;
@@ -138,7 +136,7 @@ private:
 		// for each chunk around the player
 		for (float x = lowChunkXZ.x; x <= highChunkXZ.x; x++) {
 			for (float z = lowChunkXZ.z; z <= highChunkXZ.z; z++) {
-				GW::MATH::GVECTORF chunkPos = {x, 0, z, 0};
+				Vec4 chunkPos(x, 0.f, z, 0.f);
 				// if the chunk is in the view frustum (if frustum culling is enabled)
 				#ifdef FRUSTUM_CULLING_ENABLED 
 				if (camFrustum.isBoxInFrustum(c.bbox))
@@ -265,14 +263,14 @@ private:
 		}
 	}
 
-	void unLoadChunk(GW::MATH::GVECTORF chunkPos) {
+	void unLoadChunk(Vec4 chunkPos) {
 		// todo: Save chunk to file eventually
 		if (chunkExistsAt(chunkPos)) {
 			chunkMap.erase(chunkPos);
 		}
 	}
 
-	bool chunkExistsAt(GW::MATH::GVECTORF chunkPos) {
+	bool chunkExistsAt(Vec4 chunkPos) {
 		return chunkMap.find(chunkPos) != chunkMap.end();
 	}
 
@@ -280,7 +278,7 @@ private:
 		return ((camChunkCoordsNew.x - chunk.position.x) * (camChunkCoordsNew.x - chunk.position.x)) + ((camChunkCoordsNew.z - chunk.position.z) * (camChunkCoordsNew.z - chunk.position.z));
 	}
 
-	bool ChunkAlreadyExistsIn(std::vector<GW::MATH::GVECTORF> v, GW::MATH::GVECTORF elem) {
+	bool ChunkAlreadyExistsIn(std::vector<Vec4> v, Vec4 elem) {
 		// for each chunk in the list
 		for (int i = 0; i < v.size(); i++) {
 			// break if the chunk is in the load list
@@ -293,7 +291,7 @@ private:
 		return false;
 	}
 
-	void generateVerticesAndIndices(GW::MATH::GVECTORF chunkPos) {
+	void generateVerticesAndIndices(Vec4 chunkPos) {
 		auto chunk = getChunk(chunkPos);
 
 		chunk->vertices.clear();
@@ -303,7 +301,7 @@ private:
 			for (float x = 0; x < AppGlobals::CHUNK_WIDTH; x++) {
 				for (float z = 0; z < AppGlobals::CHUNK_WIDTH; z++) {
 					// infer the block position using its coordinates
-					GW::MATH::GVECTORF blockPosition = { x, y, z, 0 };
+					Vec4 blockPosition( x, y, z, 0.f);
 
 					auto blockId = chunk->getBlock(blockPosition);
 
