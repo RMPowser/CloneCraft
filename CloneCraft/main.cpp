@@ -24,7 +24,8 @@ int main() {
 		static auto startTime = std::chrono::high_resolution_clock::now();
 		while (window.ProcessWindowEvents()) {
 			if (window.IsFocus()) {
-				ShowCursor(false);
+				while(ShowCursor(false) >= 0);
+
 				auto currentTime = std::chrono::high_resolution_clock::now();
 				float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 				startTime = std::chrono::high_resolution_clock::now();
@@ -38,7 +39,7 @@ int main() {
 				}
 			}
 			else {
-				ShowCursor(true);
+				while (ShowCursor(true) < 0);
 			}
 		}
 	

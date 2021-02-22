@@ -103,9 +103,17 @@ public:
 		return y;
 	}
 
-	POINT GetClientTopLeft() {
-		POINT v;
-		gWindow.GetClientTopLeft(*(unsigned int*)&v.x, *(unsigned int*)&v.y);
-		return v;
+	unsigned int GetClientTopLeftX() {
+		unsigned int x;
+		unsigned int y;
+		gWindow.GetClientTopLeft(x, y);
+		return x;
+	}
+
+	unsigned int GetClientTopLeftY() {
+		unsigned int x;
+		unsigned int y;
+		gWindow.GetClientTopLeft(x, y);
+		return y;
 	}
 };

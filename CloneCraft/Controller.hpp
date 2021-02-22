@@ -6,9 +6,13 @@ class Controller {
 
 	void GetNewClientCenter() {
 		Window& window = AppGlobals::window;
+		auto w = window.GetClientWidth();
+		auto h = window.GetClientHeight();
+		auto x = window.GetClientTopLeftX();
+		auto y = window.GetClientTopLeftY();
 
-		clientCenter.x = (window.GetClientWidth() / 2.f) + (window.GetClientTopLeft().x);
-		clientCenter.y = (window.GetClientHeight() / 2.f) + (window.GetClientTopLeft().y);
+		clientCenter.x = (w / 2) + x;
+		clientCenter.y = (h / 2) + y;
 	}
 
 	void SetCursorPositionToClientCenter() {
