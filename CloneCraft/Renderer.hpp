@@ -549,18 +549,21 @@ public:
 		auto playerPosition = player.position;
 		auto playerBoxPosition = player.bbox.position;
 		auto cameraPosition = camera.position;
+
+		float fps = 1.f / deltaTime;
 #define PRINTPLS
 #ifdef PRINTPLS
 		SetStdOutCursorPosition(0, 0);
 		printf(
 R"(Player Info										
-position:		x: %5f		y: %5f		z: %5f		
-camera:			x: %5f		y: %5f		z: %5f		
-bbox			x: %5f		y: %5f		z: %5f		
-rotation:		x: %5f		y: %5f		z: %5f		
-rotationCam:	x: %5f		y: %5f		z: %5f	
+position:		x: %4f		y: %4f		z: %4f		
+camera:			x: %4f		y: %4f		z: %4f		
+bbox			x: %4f		y: %4f		z: %4f		
+rotation:		x: %4f		y: %4f		z: %4f		
+rotationCam:	x: %4f		y: %4f		z: %4f	
 up pressed: %d										
-dt: %f                                              
+dt:		%f                                              
+fps:	%f                                         
 
 )",		playerPosition.x, playerPosition.y, playerPosition.z,
 		cameraPosition.x, cameraPosition.y, cameraPosition.z,
@@ -568,7 +571,8 @@ dt: %f
 		player.rotation.x, player.rotation.y, player.rotation.z,
 		camera.rotation.x, camera.rotation.y, camera.rotation.z,
 		controller.keys[G_KEY_SPACE],
-		deltaTime);
+		deltaTime,
+		fps);
 #endif // PRINTPLS
 		
 		world.update(camera, vertices, indices);

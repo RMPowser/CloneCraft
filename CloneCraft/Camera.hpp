@@ -13,8 +13,8 @@ public:
 	static Mat4 VulkanProjectionMatrix() {
 		float fovYRadians = AppGlobals::FOV * RADIAN;
 		float aspectRatio = (float)AppGlobals::window.GetClientWidth() / (float)AppGlobals::window.GetClientHeight();
-		float zNear = 0.1;
-		float zFar = 2000;
+		float zNear = 0.01f;
+		float zFar = 2000.f;
 
 		static GW::MATH::GMATRIXF r;
 		GW::MATH::GMatrix::ProjectionVulkanRHF(fovYRadians, aspectRatio, zNear, zFar, r);

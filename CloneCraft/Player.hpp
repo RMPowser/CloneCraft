@@ -133,11 +133,6 @@ public:
 			rotation.y = 360;
 
 
-		if (onGround) {
-			fallingSpeed = 0;
-		}
-
-
 		// --- jumping --- //
 		if (controller.keys[G_KEY_SPACE] && canJump && !isFlying && onGround) {
 			// fall up lol
@@ -192,10 +187,12 @@ public:
 					if (world.blockdb.blockDataFor(block).isCollidable()) {
 						if (vel.y > 0) {
 							position.y = y - bbox.dimensions.y;
+							fallingSpeed = 0;
 						}
 						else if (vel.y < 0) {
 							onGround = true;
 							position.y = y + 1;
+							fallingSpeed = 0;
 						}
 
 						if (vel.x > 0) {
