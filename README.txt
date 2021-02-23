@@ -1,4 +1,4 @@
-CloneCraft is a Minecraft clone that I wrote for my midterm project. I wrote the entire original version 
+CloneCraft is a Minecraft clone for Windows that I wrote for my midterm project. I wrote the entire original version 
 from scratch over the course of one month. It's written in C++ and uses the Vulkan graphics api 
 along with a few other quality-of-life libraries that help with things like creating a window 
 and terrain generation.
