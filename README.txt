@@ -1,7 +1,7 @@
-CloneCraft is a Minecraft clone that I wrote for my midterm project. I wrote the entire original version 
-from scratch over the course of one month. It's written in C++ and uses the Vulkan graphics api 
-along with a few other quality-of-life libraries that help with things like creating a window 
-and terrain generation.
+CloneCraft is a Minecraft clone for Windows (now considering MacOs and Linux) that I wrote for my
+midterm project. I wrote the original version from scratch over the course of one month. It's 
+written in C++ and uses the Vulkan graphics api along with a few other quality-of-life libraries
+that help with things like creating a window and terrain generation.
 
 When I started the project, I had zero experience with any graphics api, let alone Vulkan. Long
 story short, Vulkan is not a beginners api. It was hard, but I learned a lot.
