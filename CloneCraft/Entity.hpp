@@ -1,4 +1,6 @@
-#pragma once
+#ifndef ENTITY_HPP
+#define ENTITY_HPP
+
 
 class Entity {
 public:
@@ -60,3 +62,4 @@ public:
 		return !(*this == other);
 	}
 };
+#endif // ENTITY_HPP

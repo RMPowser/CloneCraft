@@ -1,4 +1,7 @@
-#pragma once
+#ifndef CAMERA_HPP
+#define CAMERA_HPP
+
+
 #include "Entity.hpp"
 #include "Frustum.hpp"
 
@@ -82,3 +85,4 @@ public:
 		return !(*this == other);
 	}
 };
+#endif // CAMERA_HPP

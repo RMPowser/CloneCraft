@@ -1,3 +1,6 @@
+#ifndef FRUSTUM_HPP
+#define FRUSTUM_HPP
+
 #include <array>
 
 class ViewFrustum {
@@ -167,3 +170,4 @@ public:
 		return !(*this == other);
 	}
 };
+#endif // FRUSTUM_HPP

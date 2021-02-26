@@ -1,4 +1,7 @@
-#pragma once
+#ifndef VERTEX_HPP
+#define VERTEX_HPP
+
+
 #include <boost/container_hash/hash.hpp>
 
 struct Vertex
@@ -76,3 +79,4 @@ namespace std
 		}
 	};
 }
+#endif // VERTEX_HPP

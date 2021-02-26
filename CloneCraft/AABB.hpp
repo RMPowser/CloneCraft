@@ -1,4 +1,5 @@
-#pragma once
+#ifndef AABB_HPP
+#define AABB_HPP
 
 class AABB {
 public:
@@ -25,3 +26,4 @@ public:
     }
 };
 
+#endif // AABB_HPP

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef MATH_HPP
+#define MATH_HPP
 
 float PI = 3.14159265358979f;
 float RADIAN = PI / 180;
@@ -45,3 +46,5 @@ float clamp(float value, float lowerBound, float upperBound) {
 		return value;
 	}
 }
+
+#endif // MATH_HPP

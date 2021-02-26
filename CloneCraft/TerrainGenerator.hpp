@@ -1,4 +1,7 @@
-#pragma once
+#ifndef TERRAIN_GENERATOR_HPP
+#define TERRAIN_GENERATOR_HPP
+
+
 #ifndef NOISE_STATIC
 #define NOISE_STATIC
 #endif
@@ -84,3 +87,4 @@ private:
 	}
 };
 
+#endif // TERRAIN_GENERATOR_HPP

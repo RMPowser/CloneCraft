@@ -1,4 +1,6 @@
-#pragma 
+#ifndef RENDERER_HPP
+#define RENDERER_HPP
+
 #include "UBO.hpp"
 #include <chrono>
 #include <fstream>
@@ -28,7 +30,6 @@ layout(location = 0) out vec2 fragTexCoord;
 
 void main() {
 	gl_Position = ubo.proj * ubo.view * ubo.model * vec4(inPosition, 1.0);
-	//fragColor = inColor;
 	fragTexCoord = inTexCoord;
 }
 )";
@@ -106,7 +107,7 @@ public:
 		window.vulkan.GetGraphicsQueue((void**)&graphicsQueue);
 
 		/***************** SHADER INTIALIZATION ******************/
-		// Intialize runtime shader compiler GLSL -> SPIRV
+		// Initialize runtime shader compiler GLSL -> SPIRV
 		shaderc::Compiler shaderCompiler;
 		shaderc::CompileOptions compilerOptions;
 #ifndef NDEBUG
@@ -719,3 +720,5 @@ private:
 		}
 	}
 };
+
+#endif // RENDERER_HPP

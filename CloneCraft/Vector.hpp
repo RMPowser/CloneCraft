@@ -1,4 +1,7 @@
-#pragma once
+#ifndef VECTOR_HPP
+#define VECTOR_HPP
+
+
 class Vec2 {
 public:
 	float x, y;
@@ -171,3 +174,4 @@ public:
 		return !(*this == other);
 	}
 };
+#endif // VECTOR_HPP

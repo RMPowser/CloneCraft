@@ -1,4 +1,6 @@
-#pragma once
+#ifndef CONTROLLER_HPP
+#define CONTROLLER_HPP
+
 #include <unordered_map>
 
 class Controller {
@@ -17,7 +19,7 @@ class Controller {
 
 	void SetCursorPositionToClientCenter() {
 		GetNewClientCenter();
-		SetCursorPos((int)clientCenter.x , (int)clientCenter.y );
+		SetCursorPos((int)clientCenter.x, (int)clientCenter.y);
 	}
 
 public:
@@ -41,7 +43,18 @@ public:
 	bool GetKey(int keyCode) {
 		float outstate;
 		input.GetState(keyCode, outstate);
-		return outstate > 0 ? true : false;
+		return outstate > 0.0f ? true : false;
+	}
+
+	Vec2 GetMouseDelta() {
+		float x, y;
+		GW::GReturn result = input.GetMouseDelta(x, y);
+		if (G_PASS(result) && result != GW::GReturn::REDUNDANT) {
+			return Vec2(x, y);
+		}
+		else {
+			return Vec2(0, 0);
+		}
 	}
 
 	void update() {
@@ -67,7 +80,7 @@ public:
 		if (keys[G_KEY_SPACE]) { verticalAxis += 1; }
 		if (keys[G_KEY_CONTROL]) { verticalAxis -= 1; }
 
-				
+
 
 		if (firstMouse) {
 			firstMouse = false;
@@ -75,10 +88,9 @@ public:
 			return;
 		}
 
-		POINT p;
-		GetCursorPos(&p);
-		mouseDelta.x = p.x - clientCenter.x;
-		mouseDelta.y = p.y - clientCenter.y;
+		
 		SetCursorPositionToClientCenter();
+		mouseDelta = GetMouseDelta();
 	}
 };
+#endif // CONTROLLER_HPP

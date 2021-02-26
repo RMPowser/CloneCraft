@@ -1,4 +1,7 @@
-#pragma once
+#ifndef PLAYER_HPP
+#define PLAYER_HPP
+
+
 #include "Entity.hpp"
 #include "Ray.hpp"
 #include <vector>
@@ -234,3 +237,4 @@ public:
 		return false;
 	}
 };
+#endif // PLAYER_HPP

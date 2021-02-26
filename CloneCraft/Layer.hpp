@@ -1,4 +1,6 @@
-#pragma once
+#ifndef LAYER_HPP
+#define LAYER_HPP
+
 #include "Block.hpp"
 
 class Layer {
@@ -29,3 +31,4 @@ public:
 		return true;
 	}
 };
+#endif // LAYER_HPP

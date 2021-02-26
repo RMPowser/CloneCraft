@@ -366,3 +366,5 @@ FodyWeavers.xsd
 /CloneCraft/textures/rungholt-RGBA.png
 
 CloneCraft/RendererOLD.h
+
+CloneCraft/includes/boost/boost/safe_numerics/out/build/

@@ -1,4 +1,6 @@
-#pragma once
+#ifndef RAY_HPP
+#define RAY_HPP
+
 #include <cmath>
 
 class Ray {
@@ -35,3 +37,5 @@ private:
     Vec4 rayEnd;
     Vec4 direction;
 };
+
+#endif // RAY_HPP

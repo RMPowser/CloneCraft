@@ -1,4 +1,7 @@
-#pragma once
+#ifndef WORLD_HPP
+#define WORLD_HPP
+
+
 #include "Chunk.hpp"
 #include "Camera.hpp"
 #include "TerrainGenerator.hpp"
@@ -373,3 +376,4 @@ private:
 		}
 	}
 };
+#endif // WORLD_HPP

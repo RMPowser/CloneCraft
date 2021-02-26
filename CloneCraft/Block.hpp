@@ -1,4 +1,7 @@
-#pragma once
+#ifndef BLOCK_HPP
+#define BLOCK_HPP
+
+
 #include "Vertex.hpp"
 #include <iostream>
 #include <string>
@@ -173,3 +176,4 @@ public:
 private:
 	BlockData blockDatas[static_cast<int>(BlockId::NUM_TYPES)];
 };
+#endif // BLOCK_HPP

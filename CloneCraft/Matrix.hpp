@@ -1,4 +1,5 @@
-#pragma once
+#ifndef MATRIX_HPP
+#define MATRIX_HPP
 
 class Mat4 {
 private:
@@ -185,3 +186,4 @@ public:
 		return !(*this == other);
 	}
 };
+#endif // MATRIX_HPP

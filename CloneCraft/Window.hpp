@@ -1,4 +1,6 @@
-#pragma once
+#ifndef WINDOW_HPP
+#define WINDOW_HPP
+
 
 class Window {
 public:
@@ -10,7 +12,7 @@ public:
 			throw std::exception("Failed to create GWindow!");
 		}
 
-		gWindow.SetWindowName(AppGlobals::windowTitle.c_str());
+		SetWindowName(AppGlobals::windowTitle.c_str());
 
 		unsigned long long bitmask = GW::GRAPHICS::GGraphicsInitOptions::DEPTH_BUFFER_SUPPORT;
 
@@ -117,3 +119,5 @@ public:
 		return y;
 	}
 };
+
+#endif // WINDOW_HPP

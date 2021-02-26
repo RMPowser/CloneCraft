@@ -1,4 +1,7 @@
-#pragma once
+#ifndef CHUNK_HPP
+#define CHUNK_HPP
+
+
 #include "Layer.hpp"
 
 class Chunk {
@@ -54,3 +57,4 @@ public:
 		return false;
 	}
 };
+#endif // CHUNK_HPP
