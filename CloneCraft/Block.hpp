@@ -161,6 +161,9 @@ public:
 
 
 class BlockDatabase {
+private:
+	BlockData blockDatas[static_cast<int>(BlockId::NUM_TYPES)];
+
 public:
 	BlockDatabase() {
 		for (size_t i = 0; i < static_cast<int>(BlockId::NUM_TYPES); i++) {
@@ -172,8 +175,5 @@ public:
 	BlockData& blockDataFor(BlockId id) {
 		return blockDatas[static_cast<int>(id)];
 	}
-
-private:
-	BlockData blockDatas[static_cast<int>(BlockId::NUM_TYPES)];
 };
 #endif // BLOCK_HPP

@@ -15,6 +15,7 @@ public:
 	BlockDatabase blockdb;
 	bool verticesAndIndicesUpdated = false;
 
+
 	World() {}
 	~World() {}
 
@@ -87,7 +88,13 @@ public:
 		for (int x = 0; x < AppGlobals::CHUNK_WIDTH; x++) {
 			for (int z = 0; z < AppGlobals::CHUNK_WIDTH; z++) {
 				int y = image->GetValue(x, z).red;
-				chunk->SetBlock(BlockId::Grass, Vec4(x, y, z, 0));
+
+				// set every block below the surface as well
+				while (y >= 0) {
+					chunk->SetBlock(BlockId::Grass, Vec4(x, y, z, 0));
+					
+					y--;
+				}
 			}
 		}
 
@@ -101,8 +108,6 @@ public:
 		//		}
 		//	}
 		//}
-
-		generateVerticesAndIndices(chunkPos);
 	}
 
 	void updateChunk(Vec4 chunkPos) {
@@ -157,32 +162,44 @@ private:
 			}
 		}
 
-		// for each chunk in the load list
+		// initialize each chunk in the load list if it is not already
 		for (int i = 0; i < chunkLoadList.size(); i++) {
-			// if we havent hit the chunk load limit per frame
-			if (numOfChunksLoaded != AppGlobals::asyncNumChunksPerFrame) {
-				// load the chunk
+			auto chunk = getChunk(chunkLoadList[i]);
+
+			if (!chunk->isInitialized) {
 				initChunk(chunkLoadList[i]);
-				forceVertexUpdate = true;
-
-				// Increase the chunks loaded count
-				numOfChunksLoaded++;
-
-				// add the chunk to the visible list because it is potentially visible
-				visibleChunksList.push_back(chunkLoadList[i]);
-
-				// remove the chunk from the load list since it is now loaded
-				chunkLoadList.erase(chunkLoadList.begin() + i);
-
-				// subtract 1 from the index since the container size changed
-				i--;
+				chunk->isInitialized = true;
 			}
-			// if we have hit the chunk load limit per frame
+		}
+
+		// load the data for each chunk once they have all been initialized
+		for (int i = 0; i < chunkLoadList.size(); i++) {
+			if (numOfChunksLoaded != AppGlobals::asyncNumChunksPerFrame) {
+				auto chunk = getChunk(chunkLoadList[i]);
+
+				if (chunk->isInitialized) {
+					// load the chunks data
+					updateChunk(chunkLoadList[i]);
+
+					// Increase the chunks loaded count
+					numOfChunksLoaded++;
+
+					// add the chunk to the visible list because it is potentially visible
+					visibleChunksList.push_back(chunkLoadList[i]);
+
+					// remove the chunk from the load list since it is now loaded
+					chunkLoadList.erase(chunkLoadList.begin() + i);
+
+					// subtract 1 from the index since the container size changed
+					i--;
+				}
+			}
 			else {
 				//stop looping
 				break;
 			}
 		}
+
 	}
 
 	void updateVisibleList() {
@@ -303,8 +320,9 @@ private:
 		for (float y = 0; y < AppGlobals::CHUNK_HEIGHT; y++) {
 			for (float x = 0; x < AppGlobals::CHUNK_WIDTH; x++) {
 				for (float z = 0; z < AppGlobals::CHUNK_WIDTH; z++) {
+
 					// infer the block position using its coordinates
-					Vec4 blockPosition( x, y, z, 0.f);
+					Vec4 blockPosition(x, (float)y, z, 0.f);
 
 					auto blockId = chunk->getBlock(blockPosition);
 
@@ -313,28 +331,100 @@ private:
 						continue;
 					}
 
-					// get the block's data
-					auto verts = blockdb.blockDataFor(blockId).getVertices();
-					auto inds = blockdb.blockDataFor(blockId).getIndices();
 
-					// save the offset for the indices
-					auto offset = chunk->vertices.size();
+					auto getBlock = [&](float x, float y, float z) {
+						auto cw = AppGlobals::CHUNK_WIDTH;
 
-					// account for the block position and chunk position and store the new verts for later
-					for (int i = 0; i < verts.size(); i++) {
-						Vertex v(verts[i]);
-						v.pos.x += blockPosition.x;
-						v.pos.y += blockPosition.y;
-						v.pos.z += blockPosition.z;
-						v.pos.x += chunk->position.x * AppGlobals::CHUNK_WIDTH; // coords are now in world coords format. 
-						v.pos.z += chunk->position.z * AppGlobals::CHUNK_WIDTH;
-						chunk->vertices.push_back(v);
-					}
+						// this stops layer 0 from always being rendered
+						if (y == -1) {
+							return BlockId::Grass;
+						}
 
-					// account for the offset into vertices vector and store the indices for later
-					for (int i = 0; i < inds.size(); i++) {
-						unsigned int ind(inds[i] + offset);
-						chunk->indices.push_back(ind);
+						// set bounds of how far out to render based on what chunk the player is in
+						Vec4 lowChunkXZ(floor(camChunkCoordsNew.x) - AppGlobals::renderDistance, 0.f, floor(camChunkCoordsNew.z) - AppGlobals::renderDistance, 0.f);
+						Vec4 highChunkXZ(floor(camChunkCoordsNew.x) + AppGlobals::renderDistance, 0.f, floor(camChunkCoordsNew.z) + AppGlobals::renderDistance, 0.f);
+
+						auto otherChunk = getChunk(chunkPos);
+
+						if ((x < 0 && chunk->position.x == lowChunkXZ.x) ||
+							(z < 0 && chunk->position.z == lowChunkXZ.z) ||
+							(x >= cw && chunk->position.x == highChunkXZ.x) ||
+							(z >= cw && chunk->position.z == highChunkXZ.z)) {
+							return BlockId::Grass;
+						}
+
+
+
+						if (x < 0 && z < 0) {
+							x += cw;
+							z += cw;
+							otherChunk = getChunk(Vec4(chunkPos.x - 1, 0.f, chunkPos.z - 1, 0.f));
+						}
+						else if (x >= cw && z >= cw) {
+							x -= cw;
+							z -= cw;
+							otherChunk = getChunk(Vec4(chunkPos.x + 1, 0.f, chunkPos.z + 1, 0.f));
+						}
+						else if (x < 0 && z >= cw) {
+							x += cw;
+							z -= cw;
+							otherChunk = getChunk(Vec4(chunkPos.x - 1, 0.f, chunkPos.z + 1, 0.f));
+						}
+						else if (x >= cw && z < 0) {
+							x -= cw;
+							z += cw;
+							otherChunk = getChunk(Vec4(chunkPos.x + 1, 0.f, chunkPos.z - 1, 0.f));
+						}
+						else if (x < 0) {
+							x += cw;
+							otherChunk = getChunk(Vec4(chunkPos.x - 1, 0.f, chunkPos.z, 0.f));
+						}
+						else if (x >= cw) {
+							x -= cw;
+							otherChunk = getChunk(Vec4(chunkPos.x + 1, 0.f, chunkPos.z, 0.f));
+						}
+						else if (z < 0) {
+							z += cw;
+							otherChunk = getChunk(Vec4(chunkPos.x, 0.f, chunkPos.z - 1, 0.f));
+						}
+						else if (z >= cw) {
+							z -= cw;
+							otherChunk = getChunk(Vec4(chunkPos.x, 0.f, chunkPos.z + 1, 0.f));
+						}
+
+
+						return otherChunk->getBlock(Vec4(x, y, z, 0.f));
+					};
+
+					if (getBlock(x + 1, y, z) == BlockId::Air ||
+						getBlock(x - 1, y, z) == BlockId::Air ||
+						getBlock(x, y + 1, z) == BlockId::Air ||
+						getBlock(x, y - 1, z) == BlockId::Air ||
+						getBlock(x, y, z + 1) == BlockId::Air ||
+						getBlock(x, y, z - 1) == BlockId::Air) {
+						// get the block's data
+						auto verts = blockdb.blockDataFor(blockId).getVertices();
+						auto inds = blockdb.blockDataFor(blockId).getIndices();
+
+						// save the offset for the indices
+						auto offset = chunk->vertices.size();
+
+						// account for the block position and chunk position and store the new verts for later
+						for (int i = 0; i < verts.size(); i++) {
+							Vertex v(verts[i]);
+							v.pos.x += blockPosition.x;
+							v.pos.y += blockPosition.y;
+							v.pos.z += blockPosition.z;
+							v.pos.x += chunk->position.x * AppGlobals::CHUNK_WIDTH; // coords are now in world coords format. 
+							v.pos.z += chunk->position.z * AppGlobals::CHUNK_WIDTH;
+							chunk->vertices.push_back(v);
+						}
+
+						// account for the offset into vertices vector and store the indices for later
+						for (int i = 0; i < inds.size(); i++) {
+							unsigned int ind(inds[i] + offset);
+							chunk->indices.push_back(ind);
+						}
 					}
 				}
 			}

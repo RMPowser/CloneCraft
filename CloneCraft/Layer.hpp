@@ -5,7 +5,7 @@
 
 class Layer {
 public:
-	BlockId blocks[16][16];
+	BlockId blocks[AppGlobals::CHUNK_WIDTH][AppGlobals::CHUNK_WIDTH];
 
 	Layer()
 	{

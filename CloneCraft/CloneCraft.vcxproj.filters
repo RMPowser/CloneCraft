@@ -54,9 +54,6 @@
     <ClInclude Include="World.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="Chunk.hpp">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="Block.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
@@ -76,6 +73,9 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="AABB.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Chunk.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

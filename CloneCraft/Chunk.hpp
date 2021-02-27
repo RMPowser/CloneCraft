@@ -1,15 +1,14 @@
 #ifndef CHUNK_HPP
 #define CHUNK_HPP
 
-
 #include "Layer.hpp"
-
 class Chunk {
 public:
-	Layer layers[256];
+	Layer layers[AppGlobals::CHUNK_HEIGHT];
 	Vec4 position;
 	std::vector<Vertex> vertices;
 	std::vector<unsigned int> indices;
+	bool isInitialized = false;
 	bool isLoaded = false;
 
 
@@ -26,7 +25,6 @@ public:
 
 		return layers[(int)blockPos.y].GetBlock(blockPos);
 	}
-
 	bool SetBlock(BlockId id, Vec4 blockPos) {
 		if (!IsBlockOutOfBounds(blockPos)) {
 			if (layers[(int)blockPos.y].SetBlock(id, blockPos)) {
@@ -36,21 +34,13 @@ public:
 
 		return false;
 	}
-
 	bool IsBlockOutOfBounds(Vec4 blockPos) {
-		if (blockPos.x >= AppGlobals::CHUNK_WIDTH)
-			return true;
-		if (blockPos.z >= AppGlobals::CHUNK_WIDTH)
-			return true;
-
-		if (blockPos.x < 0)
-			return true;
-		if (blockPos.y < 0)
-			return true;
-		if (blockPos.z < 0)
-			return true;
-
-		if (blockPos.y >= AppGlobals::CHUNK_HEIGHT) {
+		if (blockPos.x < 0 ||
+			blockPos.y < 0 ||
+			blockPos.z < 0 ||
+			blockPos.x >= AppGlobals::CHUNK_WIDTH ||
+			blockPos.y >= AppGlobals::CHUNK_HEIGHT ||
+			blockPos.z >= AppGlobals::CHUNK_WIDTH) {
 			return true;
 		}
 

@@ -71,6 +71,10 @@ public:
 					if (world.setBlock(BlockId::Air, rayEnd)) {
 						Vec4 xz = World::getChunkXZ(rayEnd);
 						world.updateChunk(world.getChunk(xz)->position);
+						world.updateChunk(world.getChunk(Vec4(xz.x + 1, 0.f, xz.z, 0.f))->position);
+						world.updateChunk(world.getChunk(Vec4(xz.x - 1, 0.f, xz.z, 0.f))->position);
+						world.updateChunk(world.getChunk(Vec4(xz.x, 0.f, xz.z + 1, 0.f))->position);
+						world.updateChunk(world.getChunk(Vec4(xz.x, 0.f, xz.z - 1, 0.f))->position);
 						break;
 					}
 					else {
