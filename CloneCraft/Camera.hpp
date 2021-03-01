@@ -20,7 +20,7 @@ public:
 		float zFar = 2000.f;
 
 		static GW::MATH::GMATRIXF r;
-		GW::MATH::GMatrix::ProjectionVulkanRHF(fovYRadians, aspectRatio, zNear, zFar, r);
+		GW::MATH::GMatrix::ProjectionVulkanLHF(fovYRadians, aspectRatio, zNear, zFar, r);
 		return Mat4(r.row1.x, r.row1.y, r.row1.z, r.row1.w,
 					r.row2.x, r.row2.y, r.row2.z, r.row2.w, 
 					r.row3.x, r.row3.y, r.row3.z, r.row3.w, 

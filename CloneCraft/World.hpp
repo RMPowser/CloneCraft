@@ -51,14 +51,17 @@ public:
 		return Vec4((int)worldCoords.x / AppGlobals::CHUNK_WIDTH, 0, (int)worldCoords.z / AppGlobals::CHUNK_WIDTH, (int)worldCoords.w);
 	}
 
-	BlockId getBlock(Vec4 blockPos) {
+	BlockType getBlock(Vec4 blockPos) {
 		auto blockPosition = getBlockXZ(blockPos);
 		auto chunkPosition = getChunkXZ(blockPos);
 
-		return getChunk(chunkPosition)->getBlock(blockPosition);
+		Chunk* chunk = getChunk(chunkPosition);
+		BlockType block = chunk->getBlock(blockPosition);
+
+		return block;
 	}
 
-	bool setBlock(BlockId id, Vec4 blockPos) {
+	bool setBlock(BlockType id, Vec4 blockPos) {
 		auto blockPosition = getBlockXZ(blockPos);
 		auto chunkPosition = getChunkXZ(blockPos);
 
@@ -90,7 +93,7 @@ public:
 				int y = image->GetValue(x, z).red;
 				// set every block below the surface as well
 				while (y >= 0) {
-					chunk->SetBlock(BlockId::Grass, Vec4(x, y, z, 0));
+					chunk->SetBlock(BlockType::Grass, Vec4(x, y, z, 0));
 					
 					y--;
 				}
@@ -102,7 +105,7 @@ public:
 		//	for (int y = 0; y < AppGlobals::CHUNK_WIDTH; y++) {
 		//		for (int x = 0; x < AppGlobals::CHUNK_WIDTH; x++) {
 		//			if (sqrt((float)(x - AppGlobals::CHUNK_WIDTH / 2) * (x - AppGlobals::CHUNK_WIDTH / 2) + (y - AppGlobals::CHUNK_WIDTH / 2) * (y - AppGlobals::CHUNK_WIDTH / 2) + (z - AppGlobals::CHUNK_WIDTH / 2) * (z - AppGlobals::CHUNK_WIDTH / 2)) <= AppGlobals::CHUNK_WIDTH / 2) {
-		//				chunk->SetBlock(BlockId::Grass, Vec4(x, y, z, 0));
+		//				chunk->SetBlock(BlockType::Grass, Vec4(x, y, z, 0));
 		//			}
 		//		}
 		//	}
@@ -326,7 +329,7 @@ private:
 					auto blockId = chunk->getBlock(blockPosition);
 
 					// dont render air
-					if (blockId == BlockId::Air) {
+					if (blockId == BlockType::Air) {
 						continue;
 					}
 
@@ -336,7 +339,7 @@ private:
 
 						// this stops layer 0 from always being rendered
 						if (y == -1) {
-							return BlockId::Grass;
+							return BlockType::Grass;
 						}
 
 						// set bounds of how far out to render based on what chunk the player is in
@@ -349,7 +352,7 @@ private:
 							(z < 0 && chunk->position.z == lowChunkXZ.z) ||
 							(x >= cw && chunk->position.x == highChunkXZ.x) ||
 							(z >= cw && chunk->position.z == highChunkXZ.z)) {
-							return BlockId::Grass;
+							return BlockType::Grass;
 						}
 
 
@@ -395,32 +398,161 @@ private:
 						return otherChunk->getBlock(Vec4(x, y, z, 0.f));
 					};
 
-					if (getBlock(x + 1, y, z) == BlockId::Air ||
-						getBlock(x - 1, y, z) == BlockId::Air ||
-						getBlock(x, y + 1, z) == BlockId::Air ||
-						getBlock(x, y - 1, z) == BlockId::Air ||
-						getBlock(x, y, z + 1) == BlockId::Air ||
-						getBlock(x, y, z - 1) == BlockId::Air) {
-						// get the block's data
-						auto verts = blockdb.blockDataFor(blockId).getVertices();
-						auto inds = blockdb.blockDataFor(blockId).getIndices();
+
+					///////////////////////////////////////////////////////////////
+					// decide what faces of the block we actually need to render //
+					///////////////////////////////////////////////////////////////
+					// do we need top face?
+					if (getBlock(x, y + 1, z) == BlockType::Air) {
+						auto verts = blockdb.GetBlockDataFor(blockId).getFaceVertices(BlockFaces::top);
+						auto inds = blockdb.GetBlockDataFor(blockId).getFaceIndices(BlockFaces::top);
 
 						// save the offset for the indices
 						auto offset = chunk->vertices.size();
 
 						// account for the block position and chunk position and store the new verts for later
-						for (int i = 0; i < verts.size(); i++) {
+						for (int i = 0; i < 4; i++) { // hardcoded 4 because each block face always has 4 verts
 							Vertex v(verts[i]);
 							v.pos.x += blockPosition.x;
 							v.pos.y += blockPosition.y;
 							v.pos.z += blockPosition.z;
-							v.pos.x += chunk->position.x * AppGlobals::CHUNK_WIDTH; // coords are now in world coords format. 
+							v.pos.x += chunk->position.x * AppGlobals::CHUNK_WIDTH; // convert from blocks model coords to world coords
 							v.pos.z += chunk->position.z * AppGlobals::CHUNK_WIDTH;
 							chunk->vertices.push_back(v);
 						}
 
 						// account for the offset into vertices vector and store the indices for later
-						for (int i = 0; i < inds.size(); i++) {
+						for (int i = 0; i < 6; i++) { // hardcoded 6 because each block face always has 2 triangles
+							unsigned int ind(inds[i] + offset);
+							chunk->indices.push_back(ind);
+						}
+					}
+
+					// do we need bottom face?
+					if (getBlock(x, y - 1, z) == BlockType::Air) {
+						auto verts = blockdb.GetBlockDataFor(blockId).getFaceVertices(BlockFaces::bottom);
+						auto inds = blockdb.GetBlockDataFor(blockId).getFaceIndices(BlockFaces::bottom);
+
+						// save the offset for the indices
+						auto offset = chunk->vertices.size();
+
+						// account for the block position and chunk position and store the new verts for later
+						for (int i = 0; i < 4; i++) { // hardcoded 4 because each block face always has 4 verts
+							Vertex v(verts[i]);
+							v.pos.x += blockPosition.x;
+							v.pos.y += blockPosition.y;
+							v.pos.z += blockPosition.z;
+							v.pos.x += chunk->position.x * AppGlobals::CHUNK_WIDTH; // convert from blocks model coords to world coords
+							v.pos.z += chunk->position.z * AppGlobals::CHUNK_WIDTH;
+							chunk->vertices.push_back(v);
+						}
+
+						// account for the offset into vertices vector and store the indices for later
+						for (int i = 0; i < 6; i++) { // hardcoded 6 because each block face always has 2 triangles
+							unsigned int ind(inds[i] + offset);
+							chunk->indices.push_back(ind);
+						}
+					}
+
+					// do we need north face?
+					if (getBlock(x, y, z + 1) == BlockType::Air) {
+						auto verts = blockdb.GetBlockDataFor(blockId).getFaceVertices(BlockFaces::north);
+						auto inds = blockdb.GetBlockDataFor(blockId).getFaceIndices(BlockFaces::north);
+
+						// save the offset for the indices
+						auto offset = chunk->vertices.size();
+
+						// account for the block position and chunk position and store the new verts for later
+						for (int i = 0; i < 4; i++) { // hardcoded 4 because each block face always has 4 verts
+							Vertex v(verts[i]);
+							v.pos.x += blockPosition.x;
+							v.pos.y += blockPosition.y;
+							v.pos.z += blockPosition.z;
+							v.pos.x += chunk->position.x * AppGlobals::CHUNK_WIDTH; // convert from blocks model coords to world coords
+							v.pos.z += chunk->position.z * AppGlobals::CHUNK_WIDTH;
+							chunk->vertices.push_back(v);
+						}
+
+						// account for the offset into vertices vector and store the indices for later
+						for (int i = 0; i < 6; i++) { // hardcoded 6 because each block face always has 2 triangles
+							unsigned int ind(inds[i] + offset);
+							chunk->indices.push_back(ind);
+						}
+					}
+
+					// do we need south face?
+					if (getBlock(x, y, z - 1) == BlockType::Air) {
+						auto verts = blockdb.GetBlockDataFor(blockId).getFaceVertices(BlockFaces::south);
+						auto inds = blockdb.GetBlockDataFor(blockId).getFaceIndices(BlockFaces::south);
+
+						// save the offset for the indices
+						auto offset = chunk->vertices.size();
+
+						// account for the block position and chunk position and store the new verts for later
+						for (int i = 0; i < 4; i++) { // hardcoded 4 because each block face always has 4 verts
+							Vertex v(verts[i]);
+							v.pos.x += blockPosition.x;
+							v.pos.y += blockPosition.y;
+							v.pos.z += blockPosition.z;
+							v.pos.x += chunk->position.x * AppGlobals::CHUNK_WIDTH; // convert from blocks model coords to world coords
+							v.pos.z += chunk->position.z * AppGlobals::CHUNK_WIDTH;
+							chunk->vertices.push_back(v);
+						}
+
+						// account for the offset into vertices vector and store the indices for later
+						for (int i = 0; i < 6; i++) { // hardcoded 6 because each block face always has 2 triangles
+							unsigned int ind(inds[i] + offset);
+							chunk->indices.push_back(ind);
+						}
+					}
+
+					// do we need east face?
+					if (getBlock(x + 1, y, z) == BlockType::Air) {
+						auto verts = blockdb.GetBlockDataFor(blockId).getFaceVertices(BlockFaces::east);
+						auto inds = blockdb.GetBlockDataFor(blockId).getFaceIndices(BlockFaces::east);
+
+						// save the offset for the indices
+						auto offset = chunk->vertices.size();
+
+						// account for the block position and chunk position and store the new verts for later
+						for (int i = 0; i < 4; i++) { // hardcoded 4 because each block face always has 4 verts
+							Vertex v(verts[i]);
+							v.pos.x += blockPosition.x;
+							v.pos.y += blockPosition.y;
+							v.pos.z += blockPosition.z;
+							v.pos.x += chunk->position.x * AppGlobals::CHUNK_WIDTH; // convert from blocks model coords to world coords
+							v.pos.z += chunk->position.z * AppGlobals::CHUNK_WIDTH;
+							chunk->vertices.push_back(v);
+						}
+
+						// account for the offset into vertices vector and store the indices for later
+						for (int i = 0; i < 6; i++) { // hardcoded 6 because each block face always has 2 triangles
+							unsigned int ind(inds[i] + offset);
+							chunk->indices.push_back(ind);
+						}
+					}
+
+					// do we need west face?
+					if (getBlock(x - 1, y, z) == BlockType::Air) {
+						auto verts = blockdb.GetBlockDataFor(blockId).getFaceVertices(BlockFaces::west);
+						auto inds = blockdb.GetBlockDataFor(blockId).getFaceIndices(BlockFaces::west);
+
+						// save the offset for the indices
+						auto offset = chunk->vertices.size();
+
+						// account for the block position and chunk position and store the new verts for later
+						for (int i = 0; i < 4; i++) { // hardcoded 4 because each block face always has 4 verts
+							Vertex v(verts[i]);
+							v.pos.x += blockPosition.x;
+							v.pos.y += blockPosition.y;
+							v.pos.z += blockPosition.z;
+							v.pos.x += chunk->position.x * AppGlobals::CHUNK_WIDTH; // convert from blocks model coords to world coords
+							v.pos.z += chunk->position.z * AppGlobals::CHUNK_WIDTH;
+							chunk->vertices.push_back(v);
+						}
+
+						// account for the offset into vertices vector and store the indices for later
+						for (int i = 0; i < 6; i++) { // hardcoded 6 because each block face always has 2 triangles
 							unsigned int ind(inds[i] + offset);
 							chunk->indices.push_back(ind);
 						}

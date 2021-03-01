@@ -133,9 +133,7 @@
       <PreserveSbr>true</PreserveSbr>
     </Bscmake>
     <PostBuildEvent>
-      <Command>mkdir "$(OutDir)models"
-mkdir  "$(OutDir)textures"
-copy "$(ProjectDir)models\*" "$(OutDir)models"
+      <Command>mkdir  "$(OutDir)textures"
 copy "$(ProjectDir)textures\*" "$(OutDir)textures"
 copy "$(SolutionDir)README.TXT" "$(OutDir)"</Command>
     </PostBuildEvent>
@@ -197,9 +195,7 @@ copy "$(SolutionDir)README.TXT" "$(OutDir)"</Command>
     <PostBuildEvent>
       <Message>
       </Message>
-      <Command>mkdir "$(OutDir)models"
-mkdir  "$(OutDir)textures"
-copy "$(ProjectDir)models\*" "$(OutDir)models"
+      <Command>mkdir  "$(OutDir)textures"
 copy "$(ProjectDir)textures\*" "$(OutDir)textures"
 copy "$(SolutionDir)README.TXT" "$(OutDir)"</Command>
     </PostBuildEvent>

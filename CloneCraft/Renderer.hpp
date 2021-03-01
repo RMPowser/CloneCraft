@@ -185,7 +185,7 @@ public:
 		VkPipelineRasterizationStateCreateInfo rasterizationCreateInfo{};
 		rasterizationCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 		rasterizationCreateInfo.rasterizerDiscardEnable = VK_FALSE;
-		rasterizationCreateInfo.polygonMode = VK_POLYGON_MODE_LINE;
+		rasterizationCreateInfo.polygonMode = VK_POLYGON_MODE_FILL;
 		rasterizationCreateInfo.lineWidth = 1.0f;
 		rasterizationCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
 		rasterizationCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
@@ -298,44 +298,47 @@ public:
 		}
 
 		// create texture images
-		for (int i = 1; i < (int)BlockId::NUM_TYPES; i++) {
-			int index = i - 1; // this is the index for the textureImages[] array, not the BlockId's
-			auto imageSize = AppGlobals::world.blockdb.blockDataFor((BlockId)i).getTexture().size;
-			auto pixels = AppGlobals::world.blockdb.blockDataFor((BlockId)i).getTexture().image;
-			VkExtent3D texExtent;
-			texExtent.width = AppGlobals::world.blockdb.blockDataFor((BlockId)i).getTexture().width;
-			texExtent.height = AppGlobals::world.blockdb.blockDataFor((BlockId)i).getTexture().height;
-			texExtent.depth = 1;
+		for (int i = 1; i < (int)BlockType::NUM_TYPES; i++) {
+			// top
+			{
+				int index = i - 1; // this is the index for the textureImages[] array, not the BlockType's
+				auto imageSize = AppGlobals::world.blockdb.GetTextureAtlas().GetSize();
+				auto pixels = AppGlobals::world.blockdb.GetTextureAtlas().GetPixels();
+				VkExtent3D texExtent;
+				texExtent.width = AppGlobals::world.blockdb.GetTextureAtlas().GetWidth();
+				texExtent.height = AppGlobals::world.blockdb.GetTextureAtlas().GetHeight();
+				texExtent.depth = 1;
 
-			VkBuffer stagingBuffer;
-			VkDeviceMemory stagingBufferMemory;
+				VkBuffer stagingBuffer;
+				VkDeviceMemory stagingBufferMemory;
 
-			// The buffer should be in host visible memory so that we can map it and it should be usable as a transfer source so that we can copy it to an image later on
-			GvkHelper::create_buffer(physicalDevice, device, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingBuffer, &stagingBufferMemory);
+				// The buffer should be in host visible memory so that we can map it and it should be usable as a transfer source so that we can copy it to an image later on
+				GvkHelper::create_buffer(physicalDevice, device, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingBuffer, &stagingBufferMemory);
 
-			// We can then directly copy the pixel values that we got from the image loading library to the buffer
-			GvkHelper::write_to_buffer(device, stagingBufferMemory, pixels, imageSize);
+				// We can then directly copy the pixel values that we got from the image loading library to the buffer
+				GvkHelper::write_to_buffer(device, stagingBufferMemory, pixels, imageSize);
 
-			VkImage image;
-			VkDeviceMemory imageMemory;
-			GvkHelper::create_image(physicalDevice, device, texExtent, 1, VK_SAMPLE_COUNT_1_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, nullptr, &image, &imageMemory);
+				VkImage image;
+				VkDeviceMemory imageMemory;
+				GvkHelper::create_image(physicalDevice, device, texExtent, 1, VK_SAMPLE_COUNT_1_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, nullptr, &image, &imageMemory);
 
-			textureImages.push_back(image);
-			textureImagesMemory.push_back(imageMemory);
+				textureImages.push_back(image);
+				textureImagesMemory.push_back(imageMemory);
 
-			GvkHelper::transition_image_layout(device, commandPool, graphicsQueue, 1, textureImages[index], VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-			GvkHelper::copy_buffer_to_image(device, commandPool, graphicsQueue, stagingBuffer, textureImages[index], texExtent);
+				GvkHelper::transition_image_layout(device, commandPool, graphicsQueue, 1, textureImages[index], VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+				GvkHelper::copy_buffer_to_image(device, commandPool, graphicsQueue, stagingBuffer, textureImages[index], texExtent);
 
-			// To be able to start sampling from the texture image in the shader, we need one last transition to prepare it for shader access
-			GvkHelper::transition_image_layout(device, commandPool, graphicsQueue, 1, textureImages[index], VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+				// To be able to start sampling from the texture image in the shader, we need one last transition to prepare it for shader access
+				GvkHelper::transition_image_layout(device, commandPool, graphicsQueue, 1, textureImages[index], VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-			vkDestroyBuffer(device, stagingBuffer, nullptr);
-			vkFreeMemory(device, stagingBufferMemory, nullptr);
+				vkDestroyBuffer(device, stagingBuffer, nullptr);
+				vkFreeMemory(device, stagingBufferMemory, nullptr);
 
-			VkImageView imageView;
-			GvkHelper::create_image_view(device, textureImages[index], VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, 1, nullptr, &imageView);
+				VkImageView imageView;
+				GvkHelper::create_image_view(device, textureImages[index], VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, 1, nullptr, &imageView);
 
-			textureImageViews.push_back(imageView);
+				textureImageViews.push_back(imageView);
+			}
 		}
 
 		// create texture sampler

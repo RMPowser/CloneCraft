@@ -59,7 +59,7 @@ public:
 		}
 
 
-		// place block
+		// break block
 		if (controller.keys[G_BUTTON_LEFT] && canPlaceBlock) {
 			auto& world = AppGlobals::world;
 
@@ -67,8 +67,8 @@ public:
 				auto rayEnd = ray.GetEnd();
 				auto block = world.getBlock(rayEnd);
 
-				if (block != BlockId::Air) {
-					if (world.setBlock(BlockId::Air, rayEnd)) {
+				if (block != BlockType::Air) {
+					if (world.setBlock(BlockType::Air, rayEnd)) {
 						Vec4 xz = World::getChunkXZ(rayEnd);
 						world.updateChunk(world.getChunk(xz)->position);
 						world.updateChunk(world.getChunk(Vec4(xz.x + 1, 0.f, xz.z, 0.f))->position);
@@ -91,7 +91,7 @@ public:
 		}
 
 
-		// break block
+		// place block
 		if (controller.keys[G_BUTTON_RIGHT] && canBreakBlock) {
 			Vec4 lastRayPosition{ 0, 0, 0, 0 };
 			auto& world = AppGlobals::world;
@@ -101,9 +101,9 @@ public:
 				auto block = world.getBlock(rayEnd);
 				auto blockPosition = lastRayPosition.AsInt();
 
-				if (block != BlockId::Air) {
+				if (block != BlockType::Air) {
 					if (!wouldCollide(blockPosition)) {
-						if (world.setBlock(BlockId::Grass, lastRayPosition)) {
+						if (world.setBlock(BlockType::Grass, lastRayPosition)) {
 							Vec4 xz = World::getChunkXZ(lastRayPosition);
 							world.updateChunk(world.getChunk(xz)->position);
 							break;
@@ -126,8 +126,8 @@ public:
 		float dx = controller.mouseDelta.x;
 		float dy = controller.mouseDelta.y;
 
-		rotation.y += dx * AppGlobals::mouseSensitivity;
-		camera.rotation.x += dy * AppGlobals::mouseSensitivity;
+		rotation.y -= dx * AppGlobals::mouseSensitivity;
+		camera.rotation.x -= dy * AppGlobals::mouseSensitivity;
 
 		if (camera.rotation.x > AppGlobals::mouseBound)
 			camera.rotation.x = AppGlobals::mouseBound;
@@ -191,7 +191,7 @@ public:
 				for (int z = zMin; z < zMax; z++) {
 					auto block = world.getBlock(Vec4(x, y, z, 0));
 
-					if (world.blockdb.blockDataFor(block).isCollidable()) {
+					if (world.blockdb.GetBlockDataFor(block).isCollidable()) {
 						if (vel.y > 0) {
 							position.y = y - bbox.dimensions.y;
 							fallingSpeed = 0;

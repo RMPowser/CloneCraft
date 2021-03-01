@@ -75,8 +75,8 @@ public:
 		verticalAxis = 0;
 		if (keys[G_KEY_A]) { horizontalAxis += 1; }
 		if (keys[G_KEY_D]) { horizontalAxis -= 1; }
-		if (keys[G_KEY_W]) { forwardAxis -= 1; }
-		if (keys[G_KEY_S]) { forwardAxis += 1; }
+		if (keys[G_KEY_W]) { forwardAxis += 1; }
+		if (keys[G_KEY_S]) { forwardAxis -= 1; }
 		if (keys[G_KEY_SPACE]) { verticalAxis += 1; }
 		if (keys[G_KEY_CONTROL]) { verticalAxis -= 1; }
 

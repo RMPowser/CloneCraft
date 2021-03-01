@@ -18,15 +18,15 @@ public:
 	}
 	~Chunk() {}
 
-	BlockId getBlock(Vec4 blockPos) {
+	BlockType getBlock(Vec4 blockPos) {
 		if (IsBlockOutOfBounds(blockPos)) {
-			return BlockId::Air;
+			return BlockType::Air;
 		}
 
 		return layers[(int)blockPos.y].GetBlock(blockPos);
 	}
 
-	bool SetBlock(BlockId id, Vec4 blockPos) {
+	bool SetBlock(BlockType id, Vec4 blockPos) {
 		if (!IsBlockOutOfBounds(blockPos)) {
 			if (layers[(int)blockPos.y].SetBlock(id, blockPos)) {
 				return true;
