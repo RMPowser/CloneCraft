@@ -185,7 +185,7 @@ public:
 		VkPipelineRasterizationStateCreateInfo rasterizationCreateInfo{};
 		rasterizationCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 		rasterizationCreateInfo.rasterizerDiscardEnable = VK_FALSE;
-		rasterizationCreateInfo.polygonMode = VK_POLYGON_MODE_FILL;
+		rasterizationCreateInfo.polygonMode = VK_POLYGON_MODE_LINE;
 		rasterizationCreateInfo.lineWidth = 1.0f;
 		rasterizationCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
 		rasterizationCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
@@ -525,7 +525,7 @@ public:
 
 		VkRect2D scissor;
 		scissor.offset = { 0, 0 };
-		scissor.extent = { static_cast<unsigned int>(width), static_cast<unsigned int>(height) };
+		scissor.extent = { width, height };
 
 		vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
@@ -536,7 +536,7 @@ public:
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 		vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentImage], 0, nullptr);
-		vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+		vkCmdDrawIndexed(commandBuffer, (uint32_t)(indices.size()), 1, 0, 0, 0);
 	}
 
 	void update(float deltaTime) {

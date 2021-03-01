@@ -88,7 +88,6 @@ public:
 		for (int x = 0; x < AppGlobals::CHUNK_WIDTH; x++) {
 			for (int z = 0; z < AppGlobals::CHUNK_WIDTH; z++) {
 				int y = image->GetValue(x, z).red;
-
 				// set every block below the surface as well
 				while (y >= 0) {
 					chunk->SetBlock(BlockId::Grass, Vec4(x, y, z, 0));
@@ -98,12 +97,12 @@ public:
 			}
 		}
 
-		// generate spheres of dirt....
-		//for (int z = 0; z < CHUNK_WIDTH; z++) {
-		//	for (int y = 0; y < CHUNK_WIDTH; y++) {
-		//		for (int x = 0; x < CHUNK_WIDTH; x++) {
-		//			if (sqrt((float)(x - CHUNK_WIDTH / 2) * (x - CHUNK_WIDTH / 2) + (y - CHUNK_WIDTH / 2) * (y - CHUNK_WIDTH / 2) + (z - CHUNK_WIDTH / 2) * (z - CHUNK_WIDTH / 2)) <= CHUNK_WIDTH / 2) {
-		//				chunk->setBlock(BlockId::Grass, x, y, z);
+		//// generate spheres of dirt lol
+		//for (int z = 0; z < AppGlobals::CHUNK_WIDTH; z++) {
+		//	for (int y = 0; y < AppGlobals::CHUNK_WIDTH; y++) {
+		//		for (int x = 0; x < AppGlobals::CHUNK_WIDTH; x++) {
+		//			if (sqrt((float)(x - AppGlobals::CHUNK_WIDTH / 2) * (x - AppGlobals::CHUNK_WIDTH / 2) + (y - AppGlobals::CHUNK_WIDTH / 2) * (y - AppGlobals::CHUNK_WIDTH / 2) + (z - AppGlobals::CHUNK_WIDTH / 2) * (z - AppGlobals::CHUNK_WIDTH / 2)) <= AppGlobals::CHUNK_WIDTH / 2) {
+		//				chunk->SetBlock(BlockId::Grass, Vec4(x, y, z, 0));
 		//			}
 		//		}
 		//	}

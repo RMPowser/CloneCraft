@@ -25,6 +25,7 @@ public:
 
 		return layers[(int)blockPos.y].GetBlock(blockPos);
 	}
+
 	bool SetBlock(BlockId id, Vec4 blockPos) {
 		if (!IsBlockOutOfBounds(blockPos)) {
 			if (layers[(int)blockPos.y].SetBlock(id, blockPos)) {
@@ -34,6 +35,7 @@ public:
 
 		return false;
 	}
+
 	bool IsBlockOutOfBounds(Vec4 blockPos) {
 		if (blockPos.x < 0 ||
 			blockPos.y < 0 ||
@@ -46,5 +48,7 @@ public:
 
 		return false;
 	}
+
+
 };
 #endif // CHUNK_HPP
