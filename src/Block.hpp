@@ -1,7 +1,6 @@
 #ifndef BLOCK_HPP
 #define BLOCK_HPP
 
-
 #include "Vertex.hpp"
 #include <iostream>
 #include <string>

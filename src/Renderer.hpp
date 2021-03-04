@@ -89,7 +89,7 @@ class Renderer {
 	VkDeviceMemory					indexBufferMemory = NULL;
 
 	Camera							camera;
-	
+
 
 
 public:
@@ -127,7 +127,7 @@ public:
 		if (result.GetCompilationStatus() != shaderc_compilation_status_success) {
 			std::cout << "Fragment Shader Errors: " << result.GetErrorMessage() << std::endl;
 		}
-		
+
 		// fragment shader module
 		GvkHelper::create_shader_module(device, result.GetLength(), (char*)result.begin(), &fragShaderModule);
 
@@ -368,7 +368,7 @@ public:
 		// parameter data. This is another example of a step that you have to perform in a Vulkan program that you wouldn't have to do 
 		// in another graphics API.
 		CreateUniformBuffers(swapchainImageCount);
-		
+
 		// create descriptor pool to allocate descriptor sets from
 		CreateDescriptorPool(swapchainImageCount);
 
@@ -395,7 +395,7 @@ public:
 				CreateDescriptorSets(newSwapchainImageCount);
 				camera.RecreateProjectionMatrix();
 			}
-		});
+			});
 	}
 
 	void Render(float deltaTime) {
@@ -546,19 +546,29 @@ public:
 		auto& controller = AppGlobals::controller;
 		auto& player = AppGlobals::player;
 		auto& world = AppGlobals::world;
+
 		controller.update();
 		player.update(deltaTime, camera);
 		camera.Update();
+		
 
-		auto playerPosition = player.position;
-		auto playerBoxPosition = player.bbox.position;
-		auto cameraPosition = camera.position;
+		PrintGameInfo(true, deltaTime);
+		
 
-		float fps = 1.f / deltaTime;
-#define PRINTPLS
-#ifdef PRINTPLS
-		SetStdOutCursorPosition(0, 0);
-		printf(
+		world.update(camera, vertices, indices);
+	}
+
+private:
+	void PrintGameInfo(bool b, float dt) {
+		if (b) {
+			float fps = 1.f / dt;
+			auto& controller = AppGlobals::controller;
+			auto& player = AppGlobals::player;
+			auto playerPosition = AppGlobals::player.position;
+			auto playerBoxPosition = AppGlobals::player.bbox.position;
+			auto cameraPosition = camera.position;
+			SetStdOutCursorPosition(0, 0);
+			printf(
 R"(Player Info										
 position:		x: %4f		y: %4f		z: %4f		
 camera:			x: %4f		y: %4f		z: %4f		
@@ -569,23 +579,19 @@ up pressed: %d
 dt:		%f                                              
 fps:	%f                                         
 
-)",		playerPosition.x, playerPosition.y, playerPosition.z,
-		cameraPosition.x, cameraPosition.y, cameraPosition.z,
-		playerBoxPosition.x, playerBoxPosition.y, playerBoxPosition.z,
-		player.rotation.x, player.rotation.y, player.rotation.z,
-		camera.rotation.x, camera.rotation.y, camera.rotation.z,
-		controller.keys[G_KEY_SPACE],
-		deltaTime,
-		fps);
-#endif // PRINTPLS
-		
-		world.update(camera, vertices, indices);
+			)", playerPosition.x, playerPosition.y, playerPosition.z,
+			cameraPosition.x, cameraPosition.y, cameraPosition.z,
+			playerBoxPosition.x, playerBoxPosition.y, playerBoxPosition.z,
+			player.rotation.x, player.rotation.y, player.rotation.z,
+			camera.rotation.x, camera.rotation.y, camera.rotation.z,
+			controller.keys[G_KEY_SPACE],
+			dt,
+			fps);
+		}
 	}
 
-private:
-	void SetStdOutCursorPosition(short CoordX, short CoordY)
-		//our function to set the cursor position.
-	{
+
+	void SetStdOutCursorPosition(short CoordX, short CoordY) {
 		HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
 		COORD position = { CoordX,CoordY };
 
@@ -607,7 +613,7 @@ private:
 		vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 
 		vkDestroySampler(device, textureSampler, nullptr);
-		
+
 		for (size_t i = 0; i < textureImages.size(); i++) {
 			vkDestroyImageView(device, textureImageViews[i], nullptr);
 			vkDestroyImage(device, textureImages[i], nullptr);

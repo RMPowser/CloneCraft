@@ -21,10 +21,12 @@ int main() {
 		clearValues[0].color = { (70.0f / 255), (160.0f / 255), (255.0f / 255), (255.0f / 255) };
 		clearValues[1].depthStencil = { 1.0f, 0 };
 
+		int showCursor = 0;
+
 		static auto startTime = std::chrono::high_resolution_clock::now();
 		while (window.ProcessWindowEvents()) {
 			if (window.IsFocus()) {
-				while(ShowCursor(false) >= 0);
+				while (showCursor >= 0) { showCursor = ShowCursor(false); }
 
 				auto currentTime = std::chrono::high_resolution_clock::now();
 				float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
@@ -39,7 +41,7 @@ int main() {
 				}
 			}
 			else {
-				while (ShowCursor(true) < 0);
+				while (showCursor < 0) { showCursor = ShowCursor(true); }
 			}
 		}
 	
